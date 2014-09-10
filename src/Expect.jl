@@ -49,7 +49,7 @@ function spawn(cmd::String, env::Base.EnvHash=ENV)
     in_stream = TTY(fd, readable=true)
     out_stream = TTY(Base.dup(fd), readable=false)
     term = TTYTerminal("dumb", in_stream, out_stream, out_stream)
-    # TODO: this appears to do nothing?
+    # TODO: raw! appears to do nothing?
     raw!(term, true)
 
     return (pid, term)
@@ -97,7 +97,7 @@ function expect(proc::ExpectProc, vec)
                 break
             end
         end
-        if !isopen(proc.term.in_stream)
+        if !isopen(proc.term.in_stream) && nb_available(proc.term.in_stream) == 0
             throw(ExpectEOF())
         end
         cond = Condition()
