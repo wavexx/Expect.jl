@@ -1,5 +1,6 @@
 module Expect
 export ExpectProc, expect, write, sendline
+export ExpectTimeout, ExpectEOF
 
 ## Imports
 import Base.write
@@ -89,6 +90,16 @@ function expect(proc::ExpectProc, vec)
     pos = 0:-1
     idx = 0
     while true
+        if length(proc.buffer) > 0
+            ret = _expect_search(proc.buffer, vec)
+            if ret != nothing
+                idx, proc.match, pos = ret
+                break
+            end
+        end
+        if !isopen(proc.term.in_stream)
+            throw(ExpectEOF())
+        end
         cond = Condition()
         @schedule begin
             proc.buffer = proc.buffer * readavailable(proc.term.in_stream)
@@ -99,16 +110,8 @@ function expect(proc::ExpectProc, vec)
             notify(cond, false)
         end
         ret = wait(cond)
-        if !ret
-            throw(ExpectTimeout)
-        end
-        ret = _expect_search(proc.buffer, vec)
-        if ret != nothing
-            idx, proc.match, pos = ret
-            break
-        end
-        if eof(proc.term.in_stream)
-            throw(ExpectEOF())
+        if ret == false
+            throw(ExpectTimeout())
         end
     end
     proc.before = proc.buffer[1:pos[1]-1]
