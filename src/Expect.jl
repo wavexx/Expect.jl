@@ -111,8 +111,7 @@ function expect!(proc::ExpectProc, vec)
             sleep(proc.timeout)
             notify(cond, false)
         end
-        ret = wait(cond)
-        if ret == false
+        if wait(cond) == false
             throw(ExpectTimeout())
         end
     end
