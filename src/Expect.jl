@@ -31,6 +31,8 @@ end
 function spawn(cmd::String, env::Base.EnvHash=ENV)
     amaster = Cint[0]
     env = convert(Array{String}, ["$key=$(env[key])" for key=keys(env)])
+    push!(env, "TERM=dumb")
+
     pid = ccall((:forkpty, "libutil"), Cint,
                 (Ptr{Cint}, Ptr{Uint8}, Ptr{Void}, Ptr{Void}),
                 amaster, C_NULL, C_NULL, C_NULL)
