@@ -1,5 +1,5 @@
 module Expect
-export ExpectProc, expect, write, sendline
+export ExpectProc, expect!, write, sendline
 export ExpectTimeout, ExpectEOF
 
 ## Imports
@@ -86,7 +86,7 @@ function _expect_search(buf::ByteString, vec::Vector)
     return nothing
 end
 
-function expect(proc::ExpectProc, vec)
+function expect!(proc::ExpectProc, vec)
     pos = 0:-1
     idx = 0
     while true
