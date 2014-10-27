@@ -3,58 +3,76 @@ export ExpectProc, expect!, write, sendline
 export ExpectTimeout, ExpectEOF
 
 ## Imports
+import Base.Process
 import Base.write
-import Base.TTY
-import Base.Terminals.TTYTerminal
-import Base.Terminals.raw!
+
+@unix_only begin
+    import Base.TTY
+end
+
 
 ## Types
 type ExpectTimeout <: Exception end
 type ExpectEOF <: Exception end
 
 type ExpectProc
-    pid::Cint
+    proc::Process
     timeout::Real
-    term::TTYTerminal
+    in_stream
+    out_stream
     before::ByteString
     match
     buffer::ByteString
 
-    function ExpectProc(cmd::String, timeout::Real; env::Base.EnvHash=ENV)
-        pid, term = spawn(cmd, env)
-        new(pid, timeout, term, "", nothing, "")
+    function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV)
+        in_stream, out_stream, proc = _spawn(cmd, env)
+        new(proc, timeout, in_stream, out_stream, "", nothing, "")
     end
 end
 
 
 ## Support functions
-function spawn(cmd::String, env::Base.EnvHash=ENV)
-    amaster = Cint[0]
-    env = convert(Array{String}, ["$key=$(env[key])" for key=keys(env)])
-    push!(env, "TERM=dumb")
+@unix_only begin
+    function raw!(tty::TTY, raw::Bool)
+        # TODO: raw! does not currently set the correct line discipline
+        #       https://github.com/JuliaLang/libuv/pull/27
+        ccall(:uv_tty_set_mode, Int32, (Ptr{Void},Int32), tty.handle, int32(raw)) != -1
+    end
+end
 
-    pid = ccall((:forkpty, "libutil"), Cint,
-                (Ptr{Cint}, Ptr{Uint8}, Ptr{Void}, Ptr{Void}),
-                amaster, C_NULL, C_NULL, C_NULL)
-    if pid == -1
-        throw(SystemError("forkpty failure: $(strerror())"))
-    elseif pid == 0
-        ret = ccall((:execvpe, "libc"), Cint,
-                    (Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}}),
-                    # TODO: stty can be avoided if raw! works correctly
-                    "/bin/sh", ["/bin/sh", "-c", "stty raw; " * cmd], env)
-        # just calling exit here is not safe
-        ccall((:_exit, "libc"), Void, (Cint,), ret)
+function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
+    @unix? begin
+        const O_RDWR = Base.FS.JL_O_RDWR
+        const O_NOCTTY = Base.FS.JL_O_NOCTTY
+
+        fdm = RawFD(ccall(:posix_openpt, Cint, (Cint,), O_RDWR|O_NOCTTY))
+        fdm == -1 && error("openpt failed: $(strerror())")
+
+        rc = ccall(:grantpt, Cint, (Cint,), fdm)
+        rc != 0 && error("grantpt failed: $(strerror())")
+
+        rc = ccall(:unlockpt, Cint, (Cint,), fdm)
+        rc != 0 && error("unlockpt failed: $(strerror())")
+
+        pts = ccall(:ptsname, Ptr{Uint8}, (Cint,), fdm)
+        fds = RawFD(ccall(:open, Cint, (Ptr{Uint8}, Cint), pts, O_RDWR|O_NOCTTY))
+        fds == -1 && error("open failed: $(strerror())")
+
+        ttym = TTY(fdm; readable=true)
+        in_stream = out_stream = ttym
+        raw!(ttym, true)
+
+        env = copy(ENV)
+        env["TERM"] = "dumb"
+
+        close_fds = (_...)->ccall(:close, Cint, (Cint,), fds)
+        proc = spawn(true, cmd, (fds, fds, fds), close_fds)
+    end : begin
+        in_stream, out_stream, proc = readandwrite(setenv(cmd, ENV))
     end
 
-    fd = RawFD(amaster[1])
-    in_stream = TTY(fd, readable=true)
-    out_stream = TTY(Base.dup(fd), readable=false)
-    term = TTYTerminal("dumb", in_stream, out_stream, out_stream)
-    # TODO: raw! appears to do nothing?
-    raw!(term, true)
-
-    return (pid, term)
+    start_reading(in_stream)
+    return (in_stream, out_stream, proc)
 end
 
 
@@ -62,8 +80,7 @@ end
 sendline(proc::ExpectProc, line::ByteString) = write(proc, line * "\n")
 
 function write(proc::ExpectProc, str::ByteString)
-    start_reading(proc.term.in_stream)
-    write(proc.term.out_stream, str)
+    write(proc.out_stream, str)
 end
 
 
@@ -99,12 +116,12 @@ function expect!(proc::ExpectProc, vec)
                 break
             end
         end
-        if !isopen(proc.term.in_stream) && nb_available(proc.term.in_stream) == 0
+        if nb_available(proc.in_stream) == 0 && (!isopen(proc.in_stream) || process_exited(proc.proc))
             throw(ExpectEOF())
         end
         cond = Condition()
         @schedule begin
-            proc.buffer = proc.buffer * readavailable(proc.term.in_stream)
+            proc.buffer = proc.buffer * readavailable(proc.in_stream)
             notify(cond, true)
         end
         @schedule begin
