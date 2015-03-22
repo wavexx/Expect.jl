@@ -1,43 +1,42 @@
+## Exports
 module Expect
-export ExpectProc, expect!, write, sendline
+export ExpectProc, expect!, sendline
 export ExpectTimeout, ExpectEOF
 
+## Support lib
+const libttymakeraw = Pkg.dir("Expect", "deps", "libttymakeraw.so")
+
 ## Imports
-import Base.Process
-import Base.write
-
-@unix_only begin
-    import Base.TTY
-end
-
+import Base: AsyncStream, Process, TTY, wait_readnb
+import Base: eof, read, readbytes!, readuntil, write
 
 ## Types
 type ExpectTimeout <: Exception end
 type ExpectEOF <: Exception end
 
-type ExpectProc
+type ExpectProc <: IO
     proc::Process
     timeout::Real
-    in_stream
-    out_stream
-    before::ByteString
+    codec::Function
+    in_stream::AsyncStream
+    out_stream::AsyncStream
+    before
     match
-    buffer::ByteString
+    buffer::Vector{UInt8}
 
-    function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV)
+    function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV, codec::Function=utf8)
         in_stream, out_stream, proc = _spawn(cmd, env)
-        new(proc, timeout, in_stream, out_stream, "", nothing, "")
+        new(proc, timeout, codec, in_stream, out_stream, "", nothing, "")
     end
 end
 
 
 ## Support functions
-@unix_only begin
-    function raw!(tty::TTY, raw::Bool)
-        # TODO: raw! does not currently set the correct line discipline
-        #       https://github.com/JuliaLang/libuv/pull/27
-        ccall(:uv_tty_set_mode, Int32, (Ptr{Void},Int32), tty.handle, int32(raw)) != -1
-    end
+function raw!(tty::TTY, raw::Bool)
+    # TODO: Base.Terminals.raw! does not currently set the correct line discipline
+    #       See https://github.com/JuliaLang/libuv/pull/27
+    #       We use our custom little hack in order to avoid waiting for libuv.
+    ccall((:tty_makeraw, libttymakeraw), Int32, (Ptr{Void}, Int32), tty.handle, Int32(raw))
 end
 
 function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
@@ -60,7 +59,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
 
         ttym = TTY(fdm; readable=true)
         in_stream = out_stream = ttym
-        raw!(ttym, true)
+        raw!(ttym, true) != 0 && error("raw! failed: $(strerror())")
 
         env = copy(ENV)
         env["TERM"] = "dumb"
@@ -76,27 +75,52 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
 end
 
 
-# Some helpers
-sendline(proc::ExpectProc, line::ByteString) = write(proc, line * "\n")
+# Base IO functions
+eof(proc::ExpectProc) = eof(proc.in_stream)
 
-function write(proc::ExpectProc, str::ByteString)
-    write(proc.out_stream, str)
+write(proc::ExpectProc, buf::AbstractArray{UInt8}) = write(proc.out_stream, buf)
+write(proc::ExpectProc, buf::UInt8) = write(proc.out_stream, buf)
+
+function read(proc::ExpectProc, ::Type{UInt8})
+    proc.buffer = []
+    proc.before = nothing
+    read(proc.in_stream, UInt8)
 end
+
+function readbytes!(proc::ExpectProc, b::AbstractArray{UInt8}, nb=length(b))
+    proc.buffer = []
+    proc.before = nothing
+    readbytes!(proc.in_stream, b, nb)
+end
+
+function _readuntil(proc::ExpectProc, delim)
+    proc.buffer = []
+    proc.before = nothing
+    readuntil(proc.in_stream, delim)
+end
+
+readuntil(proc::ExpectProc, delim::AbstractArray{Uint8}) = _readuntil(proc, delim)
+readuntil(proc::ExpectProc, delim::AbstractString) = _readuntil(proc, delim)
+readuntil(proc::ExpectProc, delim::Uint8) = _readuntil(proc, delim)
+
+
+# Some helpers
+sendline(proc::ExpectProc, line::String) = write(proc, string(line, "\n"))
 
 
 # Expect
-function _expect_search(buf::ByteString, str::String)
+function _expect_search(buf::String, str::String)
     pos = search(buf, str)
     return pos == 0:-1? nothing: (buf[pos], pos)
 end
 
-function _expect_search(buf::ByteString, regex::Regex)
+function _expect_search(buf::String, regex::Regex)
     m = match(regex, buf)
     return m == nothing? nothing: (m.match, m.offset:(m.offset+length(m.match)-1))
 end
 
-function _expect_search(buf::ByteString, vec::Vector)
-    for idx=[1:length(vec)]
+function _expect_search(buf::String, vec::Vector)
+    for idx=1:length(vec)
         ret = _expect_search(buf, vec[idx])
         if ret != nothing
             return idx, ret[1], ret[2]
@@ -105,15 +129,21 @@ function _expect_search(buf::ByteString, vec::Vector)
     return nothing
 end
 
-function expect!(proc::ExpectProc, vec)
+function expect!(proc::ExpectProc, vec; timeout::Real=proc.timeout)
     pos = 0:-1
     idx = 0
     while true
+        if nb_available(proc.in_stream) > 0
+            proc.buffer = vcat(proc.buffer, takebuf_array(proc.in_stream.buffer))
+        end
         if length(proc.buffer) > 0
-            ret = _expect_search(proc.buffer, vec)
-            if ret != nothing
-                idx, proc.match, pos = ret
-                break
+            buffer = try proc.codec(proc.buffer) end
+            if buffer != nothing
+                ret = _expect_search(buffer, vec)
+                if ret != nothing
+                    idx, proc.match, pos = ret
+                    break
+                end
             end
         end
         if nb_available(proc.in_stream) == 0 && (!isopen(proc.in_stream) || process_exited(proc.proc))
@@ -121,20 +151,32 @@ function expect!(proc::ExpectProc, vec)
         end
         cond = Condition()
         @schedule begin
-            proc.buffer = proc.buffer * readavailable(proc.in_stream)
+            wait_readnb(proc.in_stream, 1)
             notify(cond, true)
         end
         @schedule begin
-            sleep(proc.timeout)
+            sleep(timeout)
             notify(cond, false)
         end
         if wait(cond) == false
             throw(ExpectTimeout())
         end
     end
-    proc.before = proc.buffer[1:pos[1]-1]
+    proc.before = proc.codec(proc.buffer[1:pos[1]-1])
     proc.buffer = proc.buffer[pos[end]+1:end]
     return idx
 end
+
+function expect!(proc::ExpectProc, regex::Regex; timeout::Real=proc.timeout)
+    expect!(proc, [regex]; timeout=timeout)
+    proc.before
+end
+
+function expect!(proc::ExpectProc, str::String; timeout::Real=proc.timeout)
+    # TODO: this is worth implementing more efficiently
+    expect!(proc, [str]; timeout=timeout)
+    proc.before
+end
+
 
 end
