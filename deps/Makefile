@@ -1,2 +1,2 @@
 libttymakeraw.so: libttymakeraw.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -fno-whole-program -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $<

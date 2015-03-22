@@ -100,7 +100,7 @@ function _readuntil(proc::ExpectProc, delim)
 end
 
 readuntil(proc::ExpectProc, delim::AbstractArray{Uint8}) = _readuntil(proc, delim)
-readuntil(proc::ExpectProc, delim::AbstractString) = _readuntil(proc, delim)
+readuntil(proc::ExpectProc, delim::String) = _readuntil(proc, delim)
 readuntil(proc::ExpectProc, delim::Uint8) = _readuntil(proc, delim)
 
 
