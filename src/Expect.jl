@@ -22,7 +22,7 @@ type ExpectProc <: IO
     out_stream::AsyncStream
     before
     match
-    buffer::Vector{UInt8}
+    buffer::Vector{Uint8}
 
     function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV, codec::Function=utf8)
         in_stream, out_stream, proc = _spawn(cmd, env)
@@ -78,16 +78,16 @@ end
 # Base IO functions
 eof(proc::ExpectProc) = eof(proc.in_stream)
 
-write(proc::ExpectProc, buf::AbstractArray{UInt8}) = write(proc.out_stream, buf)
-write(proc::ExpectProc, buf::UInt8) = write(proc.out_stream, buf)
+write(proc::ExpectProc, buf::AbstractArray{Uint8}) = write(proc.out_stream, buf)
+write(proc::ExpectProc, buf::Uint8) = write(proc.out_stream, buf)
 
-function read(proc::ExpectProc, ::Type{UInt8})
+function read(proc::ExpectProc, ::Type{Uint8})
     proc.buffer = []
     proc.before = nothing
-    read(proc.in_stream, UInt8)
+    read(proc.in_stream, Uint8)
 end
 
-function readbytes!(proc::ExpectProc, b::AbstractArray{UInt8}, nb=length(b))
+function readbytes!(proc::ExpectProc, b::AbstractArray{Uint8}, nb=length(b))
     proc.buffer = []
     proc.before = nothing
     readbytes!(proc.in_stream, b, nb)
