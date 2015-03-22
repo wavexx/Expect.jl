@@ -36,7 +36,7 @@ function raw!(tty::TTY, raw::Bool)
     # TODO: Base.Terminals.raw! does not currently set the correct line discipline
     #       See https://github.com/JuliaLang/libuv/pull/27
     #       We use our custom little hack in order to avoid waiting for libuv.
-    ccall((:tty_makeraw, libttymakeraw), Int32, (Ptr{Void}, Int32), tty.handle, Int32(raw))
+    ccall((:tty_makeraw, libttymakeraw), Int32, (Ptr{Void}, Int32), tty.handle, (raw? 1: 0))
 end
 
 function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
