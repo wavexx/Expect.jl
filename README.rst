@@ -31,7 +31,7 @@ Expect differs from ``readandwrite`` in two major ways:
 - Commands are spawned under a pseudo-TTY interface, forcing libc-based
   programs to flush their output buffer at each line.
 - Reading is performed for you until a set of possible conditions is met (a
-  pattern matches, timeout occurs or the command exists).
+  pattern matches, timeout occurs or the command exits).
 
 
 Basic usage
@@ -66,7 +66,7 @@ Using ``ftp`` to retrieve a remote file list:
 Many details are immediately apparent:
 
 - The first argument to ExpectProc_ is just a regular Cmd_ object.
-- ``16`` is the output timeout (which is enforced for *each* expect!_ call).
+- ``16`` is the output timeout (which is enforced for *each* `expect!`_ call).
   An ExpectTimeout_ exception is raised after that.
 - An ``ExpectProc`` handle can be read or written to using the standard I/O
   functions (though regular "read" calls will **not** handle timeouts).
@@ -124,10 +124,10 @@ Constructor
 
   Constructs a new ``ExpectProc`` object.
 
-  :``cmd``: the Cmd_ command to be spawned.
-  :``timeout``: default communication timeout.
-  :``env``: environment for the command (defaults as a copy of the current)
-  :``codec``: output decoding function (defaults to utf8_)
+  :cmd: the Cmd_ command to be spawned.
+  :timeout: default communication timeout.
+  :env: environment for the command (defaults as a copy of the current)
+  :codec: output decoding function (defaults to utf8_)
 
 
 Functions
@@ -166,7 +166,7 @@ Exceptions
 ``ExpectTimeout``:
 
   Reading from the command stalled for the specified number of seconds without
-  matching any pattern.
+  matching any pattern. Reading *can* continue.
 
 ``ExpectEOF``:
 
