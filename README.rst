@@ -5,7 +5,7 @@ Expect.jl - Synchronous communication with interactive programs
 communicating through their standard input/output streams.
 
 ``Expect.jl`` is similar to D. Libes's Expect_ and many other Expect-like
-modules. It can be used to automate interactive applications such as ``ssh``,
+modules. It can be used to automate interactive applications such as shells,
 perform software testing or drive test harnesses easily.
 
 .. contents::
@@ -44,14 +44,11 @@ Using ``ftp`` to retrieve a remote file list:
    julia> # Start a new process
    julia> using Expect;
    julia> proc = ExpectProc(`ftp ftp.scene.org`, 16);
-
    julia> # Wait for the prompt
    julia> expect!(proc, "> ");
-
    julia> # Send "ls" and wait for prompt
    julia> sendline(proc, "ls");   
    julia> expect!(proc, "> ");
-
    julia> # Collect all the output since the last prompt
    julia> list = proc.before;
    julia> println(list);
