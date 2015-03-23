@@ -26,7 +26,7 @@ type ExpectProc <: IO
 
     function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV, codec::Function=utf8)
         in_stream, out_stream, proc = _spawn(cmd, env)
-        new(proc, timeout, codec, in_stream, out_stream, "", nothing, "")
+        new(proc, timeout, codec, in_stream, out_stream, "", nothing, [])
     end
 end
 
@@ -38,6 +38,9 @@ function raw!(tty::TTY, raw::Bool)
     #       We use our custom little hack in order to avoid waiting for libuv.
     ccall((:tty_makeraw, libttymakeraw), Int32, (Ptr{Void}, Int32), tty.handle, (raw? 1: 0))
 end
+
+raw!(proc::ExpectProc, raw::Bool) = raw!(proc.in_stream, raw)
+
 
 function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
     @unix? begin
