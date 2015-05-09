@@ -73,7 +73,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
         in_stream, out_stream, proc = readandwrite(setenv(cmd, ENV))
     end
 
-    start_reading(in_stream)
+    Base.start_reading(in_stream)
     return (in_stream, out_stream, proc)
 end
 
