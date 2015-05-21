@@ -43,6 +43,11 @@ raw!(proc::ExpectProc, raw::Bool) = raw!(proc.in_stream, raw)
 
 
 function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
+    env = copy(ENV)
+    env["TERM"] = "dumb"
+    setenv(cmd, env)
+    detach(cmd)
+
     @unix? begin
         const O_RDWR = Base.FS.JL_O_RDWR
         const O_NOCTTY = Base.FS.JL_O_NOCTTY
@@ -64,13 +69,10 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
         in_stream = out_stream = ttym
         raw!(ttym, true) != 0 && error("raw! failed: $(strerror())")
 
-        env = copy(ENV)
-        env["TERM"] = "dumb"
-
         close_fds = (_...)->ccall(:close, Cint, (Cint,), fds)
         proc = spawn(true, cmd, (fds, fds, fds), close_fds)
     end : begin
-        in_stream, out_stream, proc = readandwrite(setenv(cmd, ENV))
+        in_stream, out_stream, proc = readandwrite(cmd)
     end
 
     Base.start_reading(in_stream)

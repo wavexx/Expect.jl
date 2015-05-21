@@ -1,5 +1,5 @@
-Expect.jl - Synchronous communication with interactive programs
-===============================================================
+Expect.jl: Synchronous communication with interactive programs
+==============================================================
 
 ``Expect.jl`` allows to spawn interactive applications and control them by
 communicating through their standard input/output streams.
