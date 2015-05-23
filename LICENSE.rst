@@ -1,6 +1,6 @@
 The Expect.jl package is licensed under the MIT License::
 
-  Copyright (c) 2014: Yuri D'Elia "wave++" <wavexx@thregr.org>
+  Copyright (c) 2014-2015: Yuri D'Elia "wave++" <wavexx@thregr.org>
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the

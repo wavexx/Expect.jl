@@ -8,7 +8,7 @@ const libttymakeraw = Pkg.dir("Expect", "deps", "libttymakeraw.so")
 
 ## Imports
 import Base: AsyncStream, Process, TTY, wait_readnb
-import Base: eof, read, readbytes!, readuntil, write
+import Base: eof, read, readbytes!, readuntil, write, close
 
 ## Types
 type ExpectTimeout <: Exception end
@@ -82,6 +82,7 @@ end
 
 # Base IO functions
 eof(proc::ExpectProc) = eof(proc.in_stream)
+close(proc::ExpectProc) = close(proc.out_stream)
 
 write(proc::ExpectProc, buf::AbstractArray{Uint8}) = write(proc.out_stream, buf)
 write(proc::ExpectProc, buf::Uint8) = write(proc.out_stream, buf)
