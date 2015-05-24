@@ -13,6 +13,7 @@ perform software testing or drive test harnesses easily.
 .. warning::
 
    This is a work-in-progress, the API is subject to change without notice.
+   Suggestions about API design are highly appeciated.
 
 
 Introduction
@@ -23,8 +24,8 @@ descriptors attached to the current process. You write to the command's
 standard input, then you wait for a set of known replies from it's output.
 
 If the program you're communicating with was already meant to be controlled
-automatically through a serial protocol, then using readandwrite_ directly
-avoids some overhead.
+through a serial protocol, then using readandwrite_ directly is recommended as
+it avoids some overhead when spawning the process.
 
 Expect differs from ``readandwrite`` in two major ways:
 
@@ -47,7 +48,7 @@ Using ``ftp`` to retrieve a remote file list:
    julia> # Wait for the prompt
    julia> expect!(proc, "> ");
    julia> # Send "ls" and wait for prompt
-   julia> sendline(proc, "ls");   
+   julia> sendline(proc, "ls");
    julia> expect!(proc, "> ");
    julia> # Collect all the output since the last prompt
    julia> list = proc.before;
@@ -60,16 +61,14 @@ Using ``ftp`` to retrieve a remote file list:
    drwxrwsr-x   8 redhound ftpadm       4096 Mar  4 18:25 pub
    -rw-r--r--   1 redhound ftpadm        547 Nov  9  2013 welcome.msg
 
-Many details are immediately apparent:
+Some highlights about the example:
 
 - The first argument to ExpectProc_ is just a regular Cmd_ object.
-- ``16`` is the output timeout (which is enforced for *each* `expect!`_ call).
-  An ExpectTimeout_ exception is raised after that.
+- You don't have to worry about buffering.
 - An ``ExpectProc`` handle can be read or written to using the standard I/O
   functions (though regular "read" calls will **not** handle timeouts).
-- You don't have to worry about buffering.
 - ``proc.before`` contains all the command's output *since the last expect!
-  match*.
+  match* (excluding the match itself).
 
 The last point can be clarified with the following example:
 
@@ -84,13 +83,13 @@ The last point can be clarified with the following example:
    julia> expect!(proc, " ")
    "c"
 
-As shown, ``expect!`` already returns the contents of ``proc.before`` when used
-with a single pattern to match.
+For convenience, ``expect!`` already returns the contents of ``proc.before``
+when given a single pattern to match.
 
 ``expect!`` however is normally used with a *list* of possible matches to
 perform. In this scenario, the index that *matched first* will be returned.
-This is useful to perform conditional processing depending on the command's
-output:
+The matched string itself is also available in ``proc.match``. This is useful
+to perform conditional processing depending on the command's output:
 
 .. code:: julia
 
@@ -140,10 +139,13 @@ Functions
 
   Read the standard output of the program until one of the strings/regular
   expressions specified in ``vector`` matches. The index of the element that
-  matched is returned. If ``timeout`` is specified, it overrides the default
-  timeout specified in the constructor.
+  *matched first* is returned. Matches are searched in sequential order.
 
-  ``proc.before`` is reset to contain all the standard output before the match.
+  When ``timeout`` is specified, it overrides the default timeout specified in
+  the constructor.
+
+  ``proc.before`` is reset at each call to contain all the standard output
+  before the match.
 
   ``proc.match`` contains either a string or a match_ object for the element
   that matched.
