@@ -1,6 +1,8 @@
 Expect.jl: Synchronous communication with interactive programs
 ==============================================================
 
+.. contents::
+
 ``Expect.jl`` allows to spawn interactive applications and control them by
 communicating through their standard input/output streams.
 
@@ -8,12 +10,10 @@ communicating through their standard input/output streams.
 modules. It can be used to automate interactive applications such as shells,
 perform software testing or drive test harnesses easily.
 
-.. contents::
-
 .. warning::
 
    This is a work-in-progress, the API is subject to change without notice.
-   Suggestions about API design are highly appeciated.
+   Suggestions about API design are highly appreciated.
 
 
 Introduction
