@@ -1,10 +1,11 @@
 ## Exports
 module Expect
-export ExpectProc, expect!, sendline
+export ExpectProc, expect!
 export ExpectTimeout, ExpectEOF
 
 ## Imports
 import Base: AsyncStream, Process, TTY, wait_readnb
+import Base: print, println
 import Base: eof, read, readbytes!, readuntil, write, close
 
 ## Types
@@ -83,6 +84,8 @@ close(proc::ExpectProc) = close(proc.out_stream)
 
 write(proc::ExpectProc, buf::AbstractArray{Uint8}) = write(proc.out_stream, buf)
 write(proc::ExpectProc, buf::Uint8) = write(proc.out_stream, buf)
+print(proc::ExpectProc, x::String) = write(proc, x)
+println(proc::ExpectProc, x::String) = write(proc, string(x, "\n"))
 
 function read(proc::ExpectProc, ::Type{Uint8})
     proc.buffer = []
@@ -107,8 +110,6 @@ readuntil(proc::ExpectProc, delim::String) = _readuntil(proc, delim)
 readuntil(proc::ExpectProc, delim::Uint8) = _readuntil(proc, delim)
 
 
-# Some helpers
-sendline(proc::ExpectProc, line::String) = write(proc, string(line, "\n"))
 
 
 # Expect

@@ -48,7 +48,7 @@ Using ``ftp`` to retrieve a remote file list:
    julia> # Wait for the prompt
    julia> expect!(proc, "> ");
    julia> # Send "ls" and wait for prompt
-   julia> sendline(proc, "ls");
+   julia> println(proc, "ls");
    julia> expect!(proc, "> ");
    julia> # Collect all the output since the last prompt
    julia> list = proc.before;
@@ -95,7 +95,7 @@ to perform conditional processing depending on the command's output:
 
    using Expect
    proc = ExpectProc(`interpreter`, 16)
-   sendline(proc, "perform")
+   println(proc, "perform")
    idx = expect!(proc, ["> ", "ERROR: "])
    if idx == 2
        # error occurred ...
@@ -128,10 +128,6 @@ Constructor
 
 Functions
 ~~~~~~~~~
-
-``sendline(proc, string)``:
-
-  Write `string` to the standard input of the program, followed by a newline.
 
 .. _expect!:
 
