@@ -3,9 +3,6 @@ module Expect
 export ExpectProc, expect!, sendline
 export ExpectTimeout, ExpectEOF
 
-## Support lib
-const libttymakeraw = Pkg.dir("Expect", "deps", "libttymakeraw.so")
-
 ## Imports
 import Base: AsyncStream, Process, TTY, wait_readnb
 import Base: eof, read, readbytes!, readuntil, write, close
@@ -33,13 +30,13 @@ end
 
 ## Support functions
 function raw!(tty::TTY, raw::Bool)
-    # TODO: Base.Terminals.raw! does not currently set the correct line discipline
-    #       See https://github.com/JuliaLang/libuv/pull/27
-    #       We use our custom little hack in order to avoid waiting for libuv.
-    ccall((:tty_makeraw, libttymakeraw), Int32, (Ptr{Void}, Int32), tty.handle, (raw? 1: 0))
+    # UV_TTY_MODE_IO (cfmakeraw) is only available with libuv 1.0 and not directly
+    # supported by jl_tty_set_mode (JL_TTY_MODE_RAW still performs NL conversion)
+    const UV_TTY_MODE_IO = 2
+    mode = raw? UV_TTY_MODE_IO: 0
+    ret = ccall(:uv_tty_set_mode, Cint, (Ptr{Void},Cint), tty.handle, mode)
+    ret == 0
 end
-
-raw!(proc::ExpectProc, raw::Bool) = raw!(proc.in_stream, raw)
 
 
 function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
