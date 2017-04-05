@@ -116,14 +116,14 @@ Constructor
 
 .. _ExpectProc:
 
-``ExpectProc(cmd, timeout; env, codec)``:
+``ExpectProc(cmd, timeout; env, encoding)``:
 
   Constructs a new ``ExpectProc`` object.
 
   :cmd: the Cmd_ command to be spawned.
   :timeout: default communication timeout.
   :env: environment for the command (defaults as a copy of the current)
-  :codec: output decoding function (defaults to utf8_)
+  :encoding: I/O encoding (currently limited to utf8_)
 
 
 Functions
@@ -172,7 +172,7 @@ Authors and Copyright
 ---------------------
 
 | "Expect.jl" is distributed under the MIT license (see ``LICENSE.rst``).
-| Copyright(c) 2014-2015 by wave++ "Yuri D'Elia" <wavexx@thregr.org>.
+| Copyright(c) 2014-2017 by wave++ "Yuri D'Elia" <wavexx@thregr.org>.
 
 
 .. _Expect: http://www.nist.gov/el/msid/expect.cfm

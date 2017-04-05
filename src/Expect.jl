@@ -4,9 +4,10 @@ export ExpectProc, expect!
 export ExpectTimeout, ExpectEOF
 
 ## Imports
-import Base: AsyncStream, Process, TTY, wait_readnb
-import Base: print, println
-import Base: eof, read, readbytes!, readuntil, write, close
+import Base.Libc: strerror
+import Base: Process, TTY, wait_readnb, eof, close
+import Base: write, print, println, flush
+import Base: read, readbytes!, readuntil, readavailable
 
 ## Types
 type ExpectTimeout <: Exception end
@@ -15,16 +16,24 @@ type ExpectEOF <: Exception end
 type ExpectProc <: IO
     proc::Process
     timeout::Real
-    codec::Function
-    in_stream::AsyncStream
-    out_stream::AsyncStream
+    encode::Function
+    decode::Function
+    in_stream::IO
+    out_stream::IO
     before
     match
-    buffer::Vector{Uint8}
+    buffer::Vector{UInt8}
 
-    function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV, codec::Function=utf8)
+    function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV, encoding="utf8")
+        # TODO: only utf8 is currently supported
+        @assert encoding == "utf8"
+        encode = x->transcode(UInt8, x)
+        decode = x->transcode(String, x)
+
         in_stream, out_stream, proc = _spawn(cmd, env)
-        new(proc, timeout, codec, in_stream, out_stream, "", nothing, [])
+        new(proc, timeout, encode, decode,
+            in_stream, out_stream,
+            nothing, nothing, [])
     end
 end
 
@@ -46,12 +55,15 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
     setenv(cmd, env)
     detach(cmd)
 
-    @unix? begin
-        const O_RDWR = Base.FS.JL_O_RDWR
-        const O_NOCTTY = Base.FS.JL_O_NOCTTY
+    @static is_unix()? begin
+        const O_RDWR = Base.Filesystem.JL_O_RDWR
+        const O_NOCTTY = Base.Filesystem.JL_O_NOCTTY
 
         fdm = RawFD(ccall(:posix_openpt, Cint, (Cint,), O_RDWR|O_NOCTTY))
         fdm == -1 && error("openpt failed: $(strerror())")
+        ttym = TTY(fdm; readable=true)
+        in_stream = out_stream = ttym
+        raw!(ttym, true) || error("raw! failed: $(strerror())")
 
         rc = ccall(:grantpt, Cint, (Cint,), fdm)
         rc != 0 && error("grantpt failed: $(strerror())")
@@ -59,57 +71,69 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
         rc = ccall(:unlockpt, Cint, (Cint,), fdm)
         rc != 0 && error("unlockpt failed: $(strerror())")
 
-        pts = ccall(:ptsname, Ptr{Uint8}, (Cint,), fdm)
-        fds = RawFD(ccall(:open, Cint, (Ptr{Uint8}, Cint), pts, O_RDWR|O_NOCTTY))
+        pts = ccall(:ptsname, Ptr{UInt8}, (Cint,), fdm)
+        pts == C_NULL && error("ptsname failed: $(strerror())")
+
+        fds = RawFD(ccall(:open, Cint, (Ptr{UInt8}, Cint), pts, O_RDWR|O_NOCTTY))
         fds == -1 && error("open failed: $(strerror())")
 
-        ttym = TTY(fdm; readable=true)
-        in_stream = out_stream = ttym
-        raw!(ttym, true) != 0 && error("raw! failed: $(strerror())")
-
-        close_fds = (_...)->ccall(:close, Cint, (Cint,), fds)
-        proc = spawn(true, cmd, (fds, fds, fds), close_fds)
+        proc = nothing
+        try
+            proc = spawn(cmd, (fds, fds, fds))
+            @schedule begin
+                # ensure the descriptors get closed
+                wait(proc)
+                ccall(:close, Cint, (Cint,), fds)
+                close(ttym)
+            end
+        catch ex
+            ccall(:close, Cint, (Cint,), fds)
+            rethrow(ex)
+        end
     end : begin
         in_stream, out_stream, proc = readandwrite(cmd)
     end
 
+    # always read asyncronously
     Base.start_reading(in_stream)
     return (in_stream, out_stream, proc)
 end
 
 
+
 # Base IO functions
 eof(proc::ExpectProc) = eof(proc.in_stream)
+flush(proc::ExpectProc) = flush(proc.out_stream)
 close(proc::ExpectProc) = close(proc.out_stream)
 
-write(proc::ExpectProc, buf::AbstractArray{Uint8}) = write(proc.out_stream, buf)
-write(proc::ExpectProc, buf::Uint8) = write(proc.out_stream, buf)
+write(proc::ExpectProc, buf::Vector{UInt8}) = write(proc.out_stream, buf)
+write(proc::ExpectProc, buf::String) = write(proc, proc.encode(buf))
 print(proc::ExpectProc, x::String) = write(proc, x)
 println(proc::ExpectProc, x::String) = write(proc, string(x, "\n"))
 
-function read(proc::ExpectProc, ::Type{Uint8})
+function read(proc::ExpectProc, ::Type{UInt8})
     proc.buffer = []
     proc.before = nothing
-    read(proc.in_stream, Uint8)
+    read(proc.in_stream, UInt8)
 end
 
-function readbytes!(proc::ExpectProc, b::AbstractArray{Uint8}, nb=length(b))
+function readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b))
     proc.buffer = []
     proc.before = nothing
     readbytes!(proc.in_stream, b, nb)
 end
 
-function _readuntil(proc::ExpectProc, delim)
+function readuntil(proc::ExpectProc, delim::AbstractString)
     proc.buffer = []
     proc.before = nothing
     readuntil(proc.in_stream, delim)
 end
 
-readuntil(proc::ExpectProc, delim::AbstractArray{Uint8}) = _readuntil(proc, delim)
-readuntil(proc::ExpectProc, delim::String) = _readuntil(proc, delim)
-readuntil(proc::ExpectProc, delim::Uint8) = _readuntil(proc, delim)
-
-
+function readavailable(proc::ExpectProc)
+    proc.buffer = []
+    proc.before = nothing
+    readavailable(proc.in_stream)
+end
 
 
 # Expect
@@ -138,10 +162,10 @@ function expect!(proc::ExpectProc, vec; timeout::Real=proc.timeout)
     idx = 0
     while true
         if nb_available(proc.in_stream) > 0
-            proc.buffer = vcat(proc.buffer, takebuf_array(proc.in_stream.buffer))
+            proc.buffer = vcat(proc.buffer, take!(proc.in_stream.buffer))
         end
         if length(proc.buffer) > 0
-            buffer = try proc.codec(proc.buffer) end
+            buffer = try proc.decode(proc.buffer) end
             if buffer != nothing
                 ret = _expect_search(buffer, vec)
                 if ret != nothing
@@ -166,7 +190,7 @@ function expect!(proc::ExpectProc, vec; timeout::Real=proc.timeout)
             throw(ExpectTimeout())
         end
     end
-    proc.before = proc.codec(proc.buffer[1:pos[1]-1])
+    proc.before = proc.decode(proc.buffer[1:pos[1]-1])
     proc.buffer = proc.buffer[pos[end]+1:end]
     return idx
 end

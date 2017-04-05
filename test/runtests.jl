@@ -4,7 +4,7 @@ using Base.Test
 # Test simple matches
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
 @test expect!(proc, "\n") == "hello"
-@test expect!(proc, r"\n") == "world"
+@test expect!(proc, "\n") == "world"
 
 # Test match/before
 proc = ExpectProc(`printf 'a\nbB'`, 1)
@@ -20,9 +20,14 @@ write(proc, "hello\nworld\n")
 @test expect!(proc, ["hello\n", "world\n"]) == 2
 @test_throws ExpectTimeout expect!(proc, ["test"])
 
+# print/println
+proc = ExpectProc(`cat`, 1)
+println(proc, "hello world")
+@test expect!(proc, "\n") == "hello world"
+
 # Test IO interface
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
-@test readall(proc) == "hello\nworld\n"
+@test readstring(proc) == "hello\nworld\n"
 @test eof(proc)
 
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
@@ -31,5 +36,5 @@ proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
 @test eof(proc)
 
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
-@test ascii(readbytes(proc, 5)) == "hello"
+@test readline(proc) == "hello"
 @test !eof(proc)
