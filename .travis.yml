@@ -6,4 +6,4 @@ julia:
   - release
   - nightly
 after_success:
-   - if [ $TRAVIS_JULIA_VERSION = "nightly" ]; then julia -e "cd(Pkg.dir(\"${JL_PKG}\")); Pkg.add(\"Coverage\"); using Coverage; Coveralls.submit(Coveralls.process_folder())"; fi
+   - if [ "$TRAVIS_JULIA_VERSION" = "nightly" ]; then julia -e "cd(Pkg.dir(\"${JL_PKG}\")); Pkg.add(\"Coverage\"); using Coverage; Coveralls.submit(Coveralls.process_folder())"; fi
