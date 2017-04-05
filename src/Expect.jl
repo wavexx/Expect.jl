@@ -4,6 +4,7 @@ export ExpectProc, expect!
 export ExpectTimeout, ExpectEOF
 
 ## Imports
+import Compat: take!
 import Base.Libc: strerror
 import Base: Process, TTY, wait_readnb, eof, close
 import Base: write, print, println, flush
@@ -111,29 +112,10 @@ write(proc::ExpectProc, buf::String) = write(proc, proc.encode(buf))
 print(proc::ExpectProc, x::String) = write(proc, x)
 println(proc::ExpectProc, x::String) = write(proc, string(x, "\n"))
 
-function read(proc::ExpectProc, ::Type{UInt8})
-    proc.buffer = []
-    proc.before = nothing
-    read(proc.in_stream, UInt8)
-end
-
-function readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b))
-    proc.buffer = []
-    proc.before = nothing
-    readbytes!(proc.in_stream, b, nb)
-end
-
-function readuntil(proc::ExpectProc, delim::AbstractString)
-    proc.buffer = []
-    proc.before = nothing
-    readuntil(proc.in_stream, delim)
-end
-
-function readavailable(proc::ExpectProc)
-    proc.buffer = []
-    proc.before = nothing
-    readavailable(proc.in_stream)
-end
+read(proc::ExpectProc, ::Type{UInt8}) = read(proc.in_stream, UInt8)
+readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b)) = readbytes!(proc.in_stream, b, nb)
+readuntil(proc::ExpectProc, delim::AbstractString) = readuntil(proc.in_stream, delim)
+readavailable(proc::ExpectProc) = readavailable(proc.in_stream)
 
 
 # Expect

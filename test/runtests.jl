@@ -1,5 +1,6 @@
 using Expect
 using Base.Test
+using Compat: readline
 
 # Test simple matches
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
