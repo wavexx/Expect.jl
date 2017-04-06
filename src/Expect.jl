@@ -64,7 +64,6 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
         fdm == -1 && error("openpt failed: $(strerror())")
         ttym = TTY(fdm; readable=true)
         in_stream = out_stream = ttym
-        raw!(ttym, true) || error("raw! failed: $(strerror())")
 
         rc = ccall(:grantpt, Cint, (Cint,), fdm)
         rc != 0 && error("grantpt failed: $(strerror())")
@@ -77,6 +76,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
 
         fds = RawFD(ccall(:open, Cint, (Ptr{UInt8}, Cint), pts, O_RDWR|O_NOCTTY))
         fds == -1 && error("open failed: $(strerror())")
+        raw!(ttym, true) || error("raw! failed: $(strerror())")
 
         proc = nothing
         try
