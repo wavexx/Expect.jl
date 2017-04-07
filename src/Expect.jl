@@ -41,12 +41,26 @@ end
 
 ## Support functions
 function raw!(tty::TTY, raw::Bool)
-    # UV_TTY_MODE_IO (cfmakeraw) is only available with libuv 1.0 and not directly
-    # supported by jl_tty_set_mode (JL_TTY_MODE_RAW still performs NL conversion)
+    # UV_TTY_MODE_IO (cfmakeraw) is only available with libuv 1.0 and not
+    # directly supported by jl_tty_set_mode (JL_TTY_MODE_RAW still performs NL
+    # conversion).
+    const UV_TTY_MODE_NORMAL = 0
     const UV_TTY_MODE_IO = 2
-    mode = raw? UV_TTY_MODE_IO: 0
+    mode = raw? UV_TTY_MODE_IO: UV_TTY_MODE_NORMAL
     ret = ccall(:uv_tty_set_mode, Cint, (Ptr{Void},Cint), tty.handle, mode)
     ret == 0
+end
+
+function raw!(proc::ExpectProc, raw::Bool)
+    @static if VERSION < v"0.7"
+        # libuv keeps an internal "mode" state which prevents us to call
+        # cfmakeraw() again, even if the connected slave changed the discipline
+        # on our back. Work this around by toggling the mode twice.
+        # See: https://github.com/libuv/libuv/issues/1292
+        # TODO: determine valid VERSION when fix gets merged
+        raw!(proc.out_stream, !raw)
+    end
+    raw!(proc.out_stream, raw)
 end
 
 
