@@ -5,8 +5,9 @@ export ExpectTimeout, ExpectEOF
 
 ## Imports
 import Base.Libc: strerror
-import Base: Process, TTY, wait_readnb, eof, close
-import Base: write, print, println, flush
+import Base: Process, TTY, wait, wait_readnb
+import Base: kill, process_running, process_exited
+import Base: write, print, println, flush, eof, close
 import Base: read, readbytes!, readuntil, readavailable
 
 ## Types
@@ -119,6 +120,11 @@ end
 eof(proc::ExpectProc) = eof(proc.in_stream)
 flush(proc::ExpectProc) = flush(proc.out_stream)
 close(proc::ExpectProc) = close(proc.out_stream)
+
+kill(proc::ExpectProc, signum::Integer=15) = kill(proc.proc, signum)
+wait(proc::ExpectProc) = wait(proc.proc)
+process_running(proc::ExpectProc) = process_running(proc.proc)
+process_exited(proc::ExpectProc) = process_exited(proc.proc)
 
 write(proc::ExpectProc, buf::Vector{UInt8}) = write(proc.out_stream, buf)
 write(proc::ExpectProc, buf::String) = write(proc, proc.encode(buf))
