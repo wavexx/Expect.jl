@@ -4,7 +4,6 @@ export ExpectProc, expect!
 export ExpectTimeout, ExpectEOF
 
 ## Imports
-import Compat: take!
 import Base.Libc: strerror
 import Base: Process, TTY, wait_readnb, eof, close
 import Base: write, print, println, flush
@@ -158,7 +157,7 @@ function expect!(proc::ExpectProc, vec; timeout::Real=proc.timeout)
     idx = 0
     while true
         if nb_available(proc.in_stream) > 0
-            proc.buffer = vcat(proc.buffer, take!(proc.in_stream.buffer))
+            proc.buffer = vcat(proc.buffer, readavailable(proc.in_stream))
         end
         if length(proc.buffer) > 0
             buffer = try proc.decode(proc.buffer) end
