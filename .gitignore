@@ -1,1 +1,2 @@
-/deps/libttymakeraw.so
+/deps/constants
+/deps/constants.jl

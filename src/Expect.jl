@@ -2,6 +2,7 @@
 module Expect
 export ExpectProc, expect!
 export ExpectTimeout, ExpectEOF
+include("../deps/constants.jl")
 
 ## Imports
 import Base.Libc: strerror
@@ -72,16 +73,14 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
     if pty && is_unix()
         const O_RDWR = Base.Filesystem.JL_O_RDWR
         const O_NOCTTY = Base.Filesystem.JL_O_NOCTTY
-        const F_SETFD = 2
-        const FD_CLOEXEC = 1
 
         fdm = RawFD(ccall(:posix_openpt, Cint, (Cint,), O_RDWR|O_NOCTTY))
         fdm == RawFD(-1) && error("openpt failed: $(strerror())")
         ttym = TTY(fdm; readable=true)
         in_stream = out_stream = ttym
 
-        rc = ccall(:fcntl, Cint, (Cint,Cint,Cint), fdm, F_SETFD, FD_CLOEXEC)
-        rc != 0 && error("fcntl failed: $(strerror())")
+        rc = ccall(:ioctl, Cint, (Cint,Cint), fdm, FIOCLEX)
+        rc != 0 && error("ioctl failed: $(strerror())")
 
         rc = ccall(:grantpt, Cint, (Cint,), fdm)
         rc != 0 && error("grantpt failed: $(strerror())")
