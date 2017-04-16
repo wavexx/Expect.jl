@@ -20,11 +20,16 @@ write(proc, "hello\nworld\n")
 @test expect!(proc, ["hello\n", "world\n"]) == 1
 @test expect!(proc, ["hello\n", "world\n"]) == 2
 @test_throws ExpectTimeout expect!(proc, ["test"])
+close(proc)
+wait(proc)
 
 # print/println
 proc = ExpectProc(`cat`, 1)
 println(proc, "hello world")
 @test expect!(proc, "\n") == "hello world"
+@test process_running(proc)
+close(proc)
+wait(proc)
 
 # Test IO interface
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
