@@ -72,11 +72,16 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
     if pty && is_unix()
         const O_RDWR = Base.Filesystem.JL_O_RDWR
         const O_NOCTTY = Base.Filesystem.JL_O_NOCTTY
+        const F_SETFD = 2
+        const FD_CLOEXEC = 1
 
         fdm = RawFD(ccall(:posix_openpt, Cint, (Cint,), O_RDWR|O_NOCTTY))
         fdm == RawFD(-1) && error("openpt failed: $(strerror())")
         ttym = TTY(fdm; readable=true)
         in_stream = out_stream = ttym
+
+        rc = ccall(:fcntl, Cint, (Cint,Cint,Cint), fdm, F_SETFD, FD_CLOEXEC)
+        rc != 0 && error("fcntl failed: $(strerror())")
 
         rc = ccall(:grantpt, Cint, (Cint,), fdm)
         rc != 0 && error("grantpt failed: $(strerror())")
@@ -89,21 +94,17 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
 
         fds = RawFD(ccall(:open, Cint, (Ptr{UInt8}, Cint), pts, O_RDWR|O_NOCTTY))
         fds == RawFD(-1) && error("open failed: $(strerror())")
-        raw!(ttym, true) || error("raw! failed: $(strerror())")
+        raw!(out_stream, true) || error("raw! failed: $(strerror())")
 
         proc = nothing
         try
             proc = spawn(cmd, (fds, fds, fds))
             Base.start_reading(in_stream)
-            @schedule begin
-                # ensure the descriptors get closed
-                wait(proc)
-                ccall(:close, Cint, (Cint,), fds)
-                close(ttym)
-            end
         catch ex
-            ccall(:close, Cint, (Cint,), fds)
+            close(out_stream)
             rethrow(ex)
+        finally
+            ccall(:close, Cint, (Cint,), fds)
         end
     else
         in_stream, out_stream, proc = readandwrite(cmd)
@@ -174,7 +175,7 @@ function expect!(proc::ExpectProc, vec; timeout::Real=proc.timeout)
                 end
             end
         end
-        if nb_available(proc.in_stream) == 0 && (!isopen(proc.in_stream) || process_exited(proc.proc))
+        if !isopen(proc.in_stream)
             throw(ExpectEOF())
         end
         cond = Condition()
