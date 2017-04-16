@@ -68,7 +68,6 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
     env = copy(ENV)
     env["TERM"] = "dumb"
     setenv(cmd, env)
-    detach(cmd)
 
     if pty && is_unix()
         const O_RDWR = Base.Filesystem.JL_O_RDWR
