@@ -116,7 +116,7 @@ Constructor
 
 .. _ExpectProc:
 
-``ExpectProc(cmd, timeout; env, encoding)``:
+``ExpectProc(cmd, timeout; env, encoding="utf8", pty=true)``:
 
   Constructs a new ``ExpectProc`` object.
 
@@ -124,6 +124,7 @@ Constructor
   :timeout: default communication timeout.
   :env: environment for the command (defaults as a copy of the current)
   :encoding: I/O encoding (currently limited to utf8_)
+  :pty: request allocation of pty
 
 
 Functions

@@ -44,3 +44,10 @@ proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
 @test readline(proc) == "hello"
 @test !eof(proc)
+
+# Test with pty=false
+proc = ExpectProc(`cat`, 1; pty=false)
+@test typeof(proc.out_stream) <: Pipe
+@test process_running(proc)
+close(proc)
+wait(proc)

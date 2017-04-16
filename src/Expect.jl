@@ -24,13 +24,13 @@ type ExpectProc <: IO
     match
     buffer::Vector{UInt8}
 
-    function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV, encoding="utf8")
+    function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvHash=ENV, encoding="utf8", pty=true)
         # TODO: only utf8 is currently supported
         @assert encoding == "utf8"
         encode = x->transcode(UInt8, x)
         decode = x->transcode(String, x)
 
-        in_stream, out_stream, proc = _spawn(cmd, env)
+        in_stream, out_stream, proc = _spawn(cmd, env, pty)
         new(proc, timeout, encode, decode,
             in_stream, out_stream,
             nothing, nothing, [])
@@ -63,13 +63,13 @@ function raw!(proc::ExpectProc, raw::Bool)
 end
 
 
-function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
+function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
     env = copy(ENV)
     env["TERM"] = "dumb"
     setenv(cmd, env)
     detach(cmd)
 
-    @static is_unix()? begin
+    if pty && is_unix()
         const O_RDWR = Base.Filesystem.JL_O_RDWR
         const O_NOCTTY = Base.Filesystem.JL_O_NOCTTY
 
@@ -94,6 +94,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
         proc = nothing
         try
             proc = spawn(cmd, (fds, fds, fds))
+            Base.start_reading(in_stream)
             @schedule begin
                 # ensure the descriptors get closed
                 wait(proc)
@@ -104,12 +105,11 @@ function _spawn(cmd::Cmd, env::Base.EnvHash=ENV)
             ccall(:close, Cint, (Cint,), fds)
             rethrow(ex)
         end
-    end : begin
+    else
         in_stream, out_stream, proc = readandwrite(cmd)
+        Base.start_reading(Base.pipe_reader(in_stream))
     end
 
-    # always read asyncronously
-    Base.start_reading(in_stream)
     return (in_stream, out_stream, proc)
 end
 
