@@ -74,7 +74,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
         const O_NOCTTY = Base.Filesystem.JL_O_NOCTTY
 
         fdm = RawFD(ccall(:posix_openpt, Cint, (Cint,), O_RDWR|O_NOCTTY))
-        fdm == -1 && error("openpt failed: $(strerror())")
+        fdm == RawFD(-1) && error("openpt failed: $(strerror())")
         ttym = TTY(fdm; readable=true)
         in_stream = out_stream = ttym
 
@@ -88,7 +88,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
         pts == C_NULL && error("ptsname failed: $(strerror())")
 
         fds = RawFD(ccall(:open, Cint, (Ptr{UInt8}, Cint), pts, O_RDWR|O_NOCTTY))
-        fds == -1 && error("open failed: $(strerror())")
+        fds == RawFD(-1) && error("open failed: $(strerror())")
         raw!(ttym, true) || error("raw! failed: $(strerror())")
 
         proc = nothing
