@@ -104,11 +104,15 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
         try
             proc = spawn(cmd, (fds, fds, fds))
             Base.start_reading(in_stream)
+            @schedule begin
+                wait(proc)
+                close(ttym)
+                ccall(:close, Cint, (Cint,), fds)
+            end
         catch ex
-            close(out_stream)
-            rethrow(ex)
-        finally
+            close(ttym)
             ccall(:close, Cint, (Cint,), fds)
+            rethrow(ex)
         end
     else
         in_stream, out_stream, proc = readandwrite(cmd)
