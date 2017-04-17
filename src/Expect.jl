@@ -95,7 +95,10 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
 
         fds = RawFD(ccall(:open, Cint, (Ptr{UInt8}, Cint), pts, O_RDWR|O_NOCTTY))
         fds == RawFD(-1) && error("open failed: $(strerror())")
-        raw!(out_stream, true) || error("raw! failed: $(strerror())")
+        if raw!(out_stream, true) == false
+            ccall(:close, Cint, (Cint,), fds)
+            error("raw! failed: $(strerror())")
+        end
 
         proc = nothing
         try
