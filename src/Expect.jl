@@ -14,7 +14,7 @@ import Base: Process, TTY, wait, wait_readnb
 import Base: kill, process_running, process_exited
 import Base: write, print, println, flush, eof, close
 import Base: read, readbytes!, readuntil
-import Base: nb_available, readavailable
+import Base: isopen, nb_available, readavailable
 
 ## Types
 type ExpectTimeout <: Exception end
@@ -113,12 +113,11 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
             Base.start_reading(in_stream)
             @schedule begin
                 wait(proc)
-                close(ttym)
                 ccall(:close, Cint, (Cint,), fds)
             end
         catch ex
-            close(ttym)
             ccall(:close, Cint, (Cint,), fds)
+            close(ttym)
             rethrow(ex)
         end
     else
@@ -177,6 +176,7 @@ readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout) =
     readuntil(proc.in_stream, delim)
 end
 
+isopen(proc::ExpectProc) = isopen(proc.in_stream)
 nb_available(proc::ExpectProc) = nb_available(proc.in_stream)
 readavailable(proc::ExpectProc) = readavailable(proc.in_stream)
 
