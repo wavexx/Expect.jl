@@ -45,6 +45,22 @@ proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
 @test readline(proc) == "hello"
 @test !eof(proc)
 
+# Test pty support
+proc = ExpectProc(`cat`, 1)
+@static if is_unix()
+    @test typeof(proc.out_stream) <: Expect.TTY
+else
+    @test typeof(proc.out_stream) <: Pipe
+end
+
+# raw! is unnecessary (it's toggled during construction), but it should be a
+# no-op on windows for compatibility
+@test Expect.raw!(proc, true)
+
+@test process_running(proc)
+close(proc)
+wait(proc)
+
 # Test with pty=false
 proc = ExpectProc(`cat`, 1; pty=false)
 @test typeof(proc.out_stream) <: Pipe
