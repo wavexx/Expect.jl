@@ -64,6 +64,12 @@ readbytes!(proc, ret)
 # no-op on windows for compatibility
 @test Expect.raw!(proc, true)
 
+# Check that all reading function emit an ExpectTimeout exception
+@test_throws ExpectTimeout read(proc, UInt8)
+@test_throws ExpectTimeout readbytes!(proc, Vector{UInt8}(1))
+@test_throws ExpectTimeout readuntil(proc, '\n')
+@test_throws ExpectTimeout Expect.wait_readnb(proc, 1)
+
 @test process_running(proc)
 close(proc)
 wait(proc)

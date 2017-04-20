@@ -158,7 +158,7 @@ eof(proc::ExpectProc; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=t
     eof(proc.in_stream)
 end
 
-wait_readnb(proc::ExpectProc, nb::Int64; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
+wait_readnb(proc::ExpectProc, nb::Int; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
     wait_readnb(proc.in_stream, nb)
 end
 
@@ -170,7 +170,10 @@ readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b); timeout::Re
     readbytes!(proc.in_stream, b, nb)
 end
 
-readuntil(proc::ExpectProc, delim::AbstractString) = readuntil(proc.in_stream, delim)
+readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
+    readuntil(proc.in_stream, delim)
+end
+
 readavailable(proc::ExpectProc) = readavailable(proc.in_stream)
 
 
