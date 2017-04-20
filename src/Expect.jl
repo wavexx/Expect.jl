@@ -127,24 +127,49 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
 end
 
 
-
-# Base IO functions
-eof(proc::ExpectProc) = eof(proc.in_stream)
-flush(proc::ExpectProc) = flush(proc.out_stream)
-close(proc::ExpectProc) = close(proc.out_stream)
-
+# Process management
 kill(proc::ExpectProc, signum::Integer=15) = kill(proc.proc, signum)
 wait(proc::ExpectProc) = wait(proc.proc)
 process_running(proc::ExpectProc) = process_running(proc.proc)
 process_exited(proc::ExpectProc) = process_exited(proc.proc)
 
+# Writing functions
+flush(proc::ExpectProc) = flush(proc.out_stream)
+close(proc::ExpectProc) = close(proc.out_stream)
 write(proc::ExpectProc, buf::Vector{UInt8}) = write(proc.out_stream, buf)
 write(proc::ExpectProc, buf::String) = write(proc, proc.encode(buf))
 print(proc::ExpectProc, x::String) = write(proc, x)
 println(proc::ExpectProc, x::String) = write(proc, string(x, "\n"))
 
-read(proc::ExpectProc, ::Type{UInt8}) = read(proc.in_stream, UInt8)
-readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b)) = readbytes!(proc.in_stream, b, nb)
+# Reading functions
+function wait_timeout(func::Function, proc::ExpectProc; timeout::Real=proc.timeout)
+    thunk = current_task()
+    timer = Timer(timeout)
+    @async try
+        wait(timer)
+        Base.throwto(thunk, ExpectTimeout())
+    end
+    ret = func()
+    close(timer)
+    return ret
+end
+
+eof(proc::ExpectProc; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
+    eof(proc.in_stream)
+end
+
+wait_readnb(proc::ExpectProc, nb::Int64; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
+    wait_readnb(proc.in_stream, nb)
+end
+
+read(proc::ExpectProc, ::Type{UInt8}; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
+    read(proc.in_stream, UInt8)
+end
+
+readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b); timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
+    readbytes!(proc.in_stream, b, nb)
+end
+
 readuntil(proc::ExpectProc, delim::AbstractString) = readuntil(proc.in_stream, delim)
 readavailable(proc::ExpectProc) = readavailable(proc.in_stream)
 
@@ -190,18 +215,7 @@ function expect!(proc::ExpectProc, vec; timeout::Real=proc.timeout)
         if !isopen(proc.in_stream)
             throw(ExpectEOF())
         end
-        cond = Condition()
-        @schedule begin
-            wait_readnb(proc.in_stream, 1)
-            notify(cond, true)
-        end
-        @schedule begin
-            sleep(timeout)
-            notify(cond, false)
-        end
-        if wait(cond) == false
-            throw(ExpectTimeout())
-        end
+        wait_readnb(proc, 1; timeout=timeout)
     end
     proc.before = proc.decode(proc.buffer[1:pos[1]-1])
     proc.buffer = proc.buffer[pos[end]+1:end]

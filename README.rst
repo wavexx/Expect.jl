@@ -27,12 +27,13 @@ If the program you're communicating with was already meant to be controlled
 through a serial protocol, then using readandwrite_ directly is recommended as
 it avoids some overhead when spawning the process.
 
-Expect differs from ``readandwrite`` in two major ways:
+Expect differs from ``readandwrite`` in three major ways:
 
 - Commands are spawned under a pseudo-TTY interface, forcing libc-based
   programs to flush their output buffer at each line.
-- Reading is performed for you until a set of possible conditions is met (a
-  pattern matches, timeout occurs or the command exits).
+- Reading is performed for you until a set of possible conditions is met.
+- Reading raises an ExpectTimeout exception when it blocks for longer than the
+  requested threshold.
 
 
 Basic usage
@@ -66,7 +67,7 @@ Some highlights about the example:
 - The first argument to ExpectProc_ is just a regular Cmd_ object.
 - You don't have to worry about buffering.
 - An ``ExpectProc`` handle can be read or written to using the standard I/O
-  functions (though regular "read" calls will **not** handle timeouts).
+  functions such as ``readbytes!`` or ``println``.
 - ``proc.before`` contains all the command's output *since the last expect!
   match* (excluding the match itself).
 
