@@ -3,8 +3,10 @@ module Expect
 export ExpectProc, expect!
 export ExpectTimeout, ExpectEOF
 
-# ioctl values
-is_unix() && include("../deps/constants.jl")
+@static if is_unix()
+    # ioctl values
+    include("../deps/constants.jl")
+end
 
 ## Imports
 import Base.Libc: strerror
