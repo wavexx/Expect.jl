@@ -11,7 +11,8 @@ import Base.Libc: strerror
 import Base: Process, TTY, wait, wait_readnb
 import Base: kill, process_running, process_exited
 import Base: write, print, println, flush, eof, close
-import Base: read, readbytes!, readuntil, readavailable
+import Base: read, readbytes!, readuntil
+import Base: nb_available, readavailable
 
 ## Types
 type ExpectTimeout <: Exception end
@@ -174,6 +175,7 @@ readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout) =
     readuntil(proc.in_stream, delim)
 end
 
+nb_available(proc::ExpectProc) = nb_available(proc.in_stream)
 readavailable(proc::ExpectProc) = readavailable(proc.in_stream)
 
 
