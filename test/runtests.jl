@@ -53,6 +53,13 @@ else
     @test typeof(proc.out_stream) <: Pipe
 end
 
+# Ensure the transport is already 8bit safe
+buf = [UInt8(i) for i in 0:255]
+write(proc, buf)
+ret = Vector{UInt8}(length(buf))
+readbytes!(proc, ret)
+@test buf == ret
+
 # raw! is unnecessary (it's toggled during construction), but it should be a
 # no-op on windows for compatibility
 @test Expect.raw!(proc, true)
