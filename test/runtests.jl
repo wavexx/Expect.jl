@@ -69,6 +69,8 @@ readbytes!(proc, ret)
 @test_throws ExpectTimeout readbytes!(proc, Vector{UInt8}(1))
 @test_throws ExpectTimeout readuntil(proc, '\n')
 @test_throws ExpectTimeout Expect.wait_readnb(proc, 1)
+@test_throws ExpectTimeout readstring(proc)
+@test_throws ExpectTimeout readline(proc)
 
 @test process_running(proc)
 close(proc)
