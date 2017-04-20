@@ -146,7 +146,7 @@ println(proc::ExpectProc, x::String) = write(proc, string(x, "\n"))
 function wait_timeout(func::Function, proc::ExpectProc; timeout::Real=proc.timeout)
     thunk = current_task()
     timer = Timer(timeout)
-    @async try
+    @schedule try
         wait(timer)
         Base.throwto(thunk, ExpectTimeout())
     end
