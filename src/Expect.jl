@@ -114,6 +114,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
             @schedule begin
                 wait(proc)
                 ccall(:close, Cint, (Cint,), fds)
+                kill(proc)
             end
         catch ex
             ccall(:close, Cint, (Cint,), fds)
@@ -123,6 +124,10 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
     else
         in_stream, out_stream, proc = readandwrite(cmd)
         Base.start_reading(Base.pipe_reader(in_stream))
+        @schedule begin
+            wait(proc)
+            kill(proc)
+        end
     end
 
     return (in_stream, out_stream, proc)
