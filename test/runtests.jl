@@ -2,6 +2,19 @@ using Expect
 using Base.Test
 using Compat: readline
 
+macro test_throws_within(extype, timeout, expr)
+    quote
+        expr = $(Expr(:inert, expr))
+        timeout = $timeout
+        timer = Base.Timer(
+            _->error("$(timeout)s timeout: $expr"),
+            timeout)
+        @test_throws $extype $expr
+        close(timer)
+    end
+end
+
+
 # Test simple matches
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
 @test expect!(proc, "\n") == "hello"
@@ -24,7 +37,7 @@ write(proc, "hello\nworld\n")
 @test proc.match == "hello\n"
 @test expect!(proc, ["hello\n", "world\n"]) == 2
 @test proc.match == "world\n"
-@test_throws ExpectTimeout expect!(proc, ["test"])
+@test_throws_within ExpectTimeout 2 expect!(proc, ["test"])
 @test proc.match == nothing
 close(proc)
 wait(proc)
@@ -71,13 +84,13 @@ readbytes!(proc, ret)
 @test Expect.raw!(proc, true)
 
 # Check that all reading function emit an ExpectTimeout exception
-@test_throws ExpectTimeout read(proc, UInt8)
-@test_throws ExpectTimeout readbytes!(proc, Vector{UInt8}(1))
-@test_throws ExpectTimeout readuntil(proc, '\n')
-@test_throws ExpectTimeout Base.wait_readnb(proc, 1)
-@test_throws ExpectTimeout Base.wait_readbyte(proc, UInt8('\n'))
-@test_throws ExpectTimeout readstring(proc)
-@test_throws ExpectTimeout readline(proc)
+@test_throws_within ExpectTimeout 2 read(proc, UInt8)
+@test_throws_within ExpectTimeout 2 readbytes!(proc, Vector{UInt8}(1))
+@test_throws_within ExpectTimeout 2 readuntil(proc, '\n')
+@test_throws_within ExpectTimeout 2 Base.wait_readnb(proc, 1)
+@test_throws_within ExpectTimeout 2 Base.wait_readbyte(proc, UInt8('\n'))
+@test_throws_within ExpectTimeout 2 readstring(proc)
+@test_throws_within ExpectTimeout 2 readline(proc)
 
 @test process_running(proc)
 close(proc)
@@ -92,7 +105,7 @@ wait(proc)
 
 # Test default timeout and timeout context
 proc = ExpectProc(`sh -c 'sleep 5 && echo test'`, 1)
-@test_throws ExpectTimeout expect!(proc, "test")
+@test_throws_within ExpectTimeout 2 expect!(proc, "test")
 with_timeout!(proc, 5) do
     @test expect!(proc, "test") == ""
 end
