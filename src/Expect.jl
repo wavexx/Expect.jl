@@ -10,7 +10,7 @@ end
 
 ## Imports
 import Base.Libc: strerror
-import Base: Process, TTY, wait, wait_readnb
+import Base: Process, TTY, wait, wait_readnb, wait_readbyte
 import Base: kill, process_running, process_exited
 import Base: write, print, println, flush, eof, close
 import Base: read, readbytes!, readuntil
@@ -184,6 +184,11 @@ eof(proc::ExpectProc; timeout::Real=proc.timeout) =
 wait_readnb(proc::ExpectProc, nb::Int; timeout::Real=proc.timeout) =
     wait_timeout(proc; timeout=timeout) do
         wait_readnb(proc.in_stream, nb)
+    end
+
+wait_readbyte(proc::ExpectProc, c::UInt8; timeout::Real=proc.timeout) =
+    wait_timeout(proc; timeout=timeout) do
+        wait_readbyte(proc.in_stream, c)
     end
 
 read(proc::ExpectProc, ::Type{UInt8}; timeout::Real=proc.timeout) =
