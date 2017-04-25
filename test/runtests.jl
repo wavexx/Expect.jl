@@ -5,7 +5,9 @@ using Compat: readline
 # Test simple matches
 proc = ExpectProc(`printf 'hello\nworld\n'`, 1)
 @test expect!(proc, "\n") == "hello"
+@test proc.match == "\n"
 @test expect!(proc, "\n") == "world"
+@test proc.match == "\n"
 
 # Test match/before
 proc = ExpectProc(`printf 'a\nbB'`, 1)
@@ -13,13 +15,17 @@ proc = ExpectProc(`printf 'a\nbB'`, 1)
 @test proc.match == "B"
 @test proc.before == "a\nb"
 @test_throws ExpectEOF expect!(proc, ["test"]) == 2
+@test proc.match == nothing
 
 # Asyncronous I/O
 proc = ExpectProc(`cat`, 1)
 write(proc, "hello\nworld\n")
 @test expect!(proc, ["hello\n", "world\n"]) == 1
+@test proc.match == "hello\n"
 @test expect!(proc, ["hello\n", "world\n"]) == 2
+@test proc.match == "world\n"
 @test_throws ExpectTimeout expect!(proc, ["test"])
+@test proc.match == nothing
 close(proc)
 wait(proc)
 

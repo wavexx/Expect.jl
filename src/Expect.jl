@@ -233,6 +233,7 @@ function _expect_search(buf::AbstractString, vec::Vector)
 end
 
 function expect!(proc::ExpectProc, vec; timeout::Real=proc.timeout)
+    proc.match = nothing
     pos = 0:-1
     idx = 0
     while true
