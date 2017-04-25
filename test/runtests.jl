@@ -83,6 +83,14 @@ proc = ExpectProc(`cat`, 1; pty=false)
 close(proc)
 wait(proc)
 
+# Test default timeout and timeout context
+proc = ExpectProc(`sh -c 'sleep 5 && echo test'`, 1)
+@test_throws ExpectTimeout expect!(proc, "test")
+with_timeout!(proc, 5) do
+    @test expect!(proc, "test") == ""
+end
+wait(proc)
+
 # Ensure that Inf means no timeout
 proc = ExpectProc(`sh -c 'sleep 5 && echo test'`, Inf)
 @test expect!(proc, "test") == ""

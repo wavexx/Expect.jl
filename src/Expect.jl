@@ -1,6 +1,6 @@
 ## Exports
 module Expect
-export ExpectProc, expect!
+export ExpectProc, expect!, with_timeout!
 export ExpectTimeout, ExpectEOF
 
 @static if is_unix()
@@ -155,8 +155,24 @@ function wait_timeout(func::Function, proc::ExpectProc; timeout::Real=proc.timeo
         wait(timer)
         Base.throwto(thunk, ExpectTimeout())
     end
-    ret = func()
-    close(timer)
+    local ret
+    try
+        ret = func()
+    finally
+        close(timer)
+    end
+    return ret
+end
+
+function with_timeout!(func::Function, proc::ExpectProc, timeout::Real)
+    orig = proc.timeout
+    proc.timeout = timeout
+    local ret
+    try
+        ret = func()
+    finally
+        proc.timeout = orig
+    end
     return ret
 end
 

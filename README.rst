@@ -154,6 +154,20 @@ Functions
   expressions specified in ``element`` matches. The content of ``proc.before``
   is returned.
 
+.. _with_timeout!:
+
+``with_timeout!(func, proc, timeout)``:
+
+  Modify the default read timeout within the context of ``func``. Normally used
+  with the ``do`` syntax:
+
+  .. code:: jl
+
+     proc = ExpectProc(`command`, 1)
+     with_timeout!(proc, Inf) do
+       # no read timeout within this context
+     end
+
 
 Exceptions
 ~~~~~~~~~~
