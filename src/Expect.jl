@@ -146,6 +146,9 @@ println(proc::ExpectProc, x::AbstractString) = write(proc, string(x, "\n"))
 
 # Reading functions
 function wait_timeout(func::Function, proc::ExpectProc; timeout::Real=proc.timeout)
+    if isinf(timeout)
+        return func()
+    end
     thunk = current_task()
     timer = Timer(timeout)
     @schedule try

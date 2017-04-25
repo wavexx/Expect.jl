@@ -140,7 +140,7 @@ Functions
   *matched first* is returned. Matches are searched in sequential order.
 
   When ``timeout`` is specified, it overrides the default timeout specified in
-  the constructor.
+  the constructor. A value of ``Inf`` waits indefinitely.
 
   ``proc.before`` is reset at each call to contain all the standard output
   before the match.

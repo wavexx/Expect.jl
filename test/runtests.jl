@@ -82,3 +82,8 @@ proc = ExpectProc(`cat`, 1; pty=false)
 @test process_running(proc)
 close(proc)
 wait(proc)
+
+# Ensure that Inf means no timeout
+proc = ExpectProc(`sh -c 'sleep 5 && echo test'`, Inf)
+@test expect!(proc, "test") == ""
+wait(proc)
