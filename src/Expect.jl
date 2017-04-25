@@ -271,11 +271,8 @@ function expect!(proc::ExpectProc, regex::Regex; timeout::Real=proc.timeout)
 end
 
 function expect!(proc::ExpectProc, str::AbstractString; timeout::Real=proc.timeout)
-    proc.match = nothing
-    buf = readuntil(proc, str; timeout=timeout)
-    proc.match = str
-    proc.buffer = ""
-    proc.before = buf[1:end-length(str)]
+    # TODO: this is worth implementing efficiently
+    expect!(proc, [str]; timeout=timeout)
     proc.before
 end
 

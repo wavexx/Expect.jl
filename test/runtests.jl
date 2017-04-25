@@ -28,6 +28,8 @@ proc = ExpectProc(`printf 'a\nbB'`, 1)
 @test proc.match == "B"
 @test proc.before == "a\nb"
 @test_throws ExpectEOF expect!(proc, ["test"]) == 2
+@test_throws ExpectEOF expect!(proc, "test")
+@test_throws ExpectEOF expect!(proc, r"test")
 @test proc.match == nothing
 
 # Asyncronous I/O
