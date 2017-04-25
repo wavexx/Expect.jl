@@ -176,25 +176,30 @@ function with_timeout!(func::Function, proc::ExpectProc, timeout::Real)
     return ret
 end
 
-eof(proc::ExpectProc; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
-    eof(proc.in_stream)
-end
+eof(proc::ExpectProc; timeout::Real=proc.timeout) =
+    wait_timeout(proc; timeout=timeout) do
+        eof(proc.in_stream)
+    end
 
-wait_readnb(proc::ExpectProc, nb::Int; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
-    wait_readnb(proc.in_stream, nb)
-end
+wait_readnb(proc::ExpectProc, nb::Int; timeout::Real=proc.timeout) =
+    wait_timeout(proc; timeout=timeout) do
+        wait_readnb(proc.in_stream, nb)
+    end
 
-read(proc::ExpectProc, ::Type{UInt8}; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
-    read(proc.in_stream, UInt8)
-end
+read(proc::ExpectProc, ::Type{UInt8}; timeout::Real=proc.timeout) =
+    wait_timeout(proc; timeout=timeout) do
+        read(proc.in_stream, UInt8)
+    end
 
-readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b); timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
-    readbytes!(proc.in_stream, b, nb)
-end
+readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b); timeout::Real=proc.timeout) =
+    wait_timeout(proc; timeout=timeout) do
+        readbytes!(proc.in_stream, b, nb)
+    end
 
-readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout) = wait_timeout(proc; timeout=timeout) do
-    readuntil(proc.in_stream, delim)
-end
+readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout) =
+    wait_timeout(proc; timeout=timeout) do
+        readuntil(proc.in_stream, delim)
+    end
 
 isopen(proc::ExpectProc) = isopen(proc.in_stream)
 nb_available(proc::ExpectProc) = nb_available(proc.in_stream)
