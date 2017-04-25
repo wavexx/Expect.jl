@@ -107,7 +107,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
             error("raw! failed: $(strerror())")
         end
 
-        proc = nothing
+        local proc::Process
         try
             proc = spawn(cmd, (fds, fds, fds))
             Base.start_reading(in_stream)
@@ -139,9 +139,10 @@ process_exited(proc::ExpectProc) = process_exited(proc.proc)
 flush(proc::ExpectProc) = flush(proc.out_stream)
 close(proc::ExpectProc) = close(proc.out_stream)
 write(proc::ExpectProc, buf::Vector{UInt8}) = write(proc.out_stream, buf)
+write(proc::ExpectProc, buf::AbstractString) = write(proc, proc.encode(buf))
 write(proc::ExpectProc, buf::String) = write(proc, proc.encode(buf))
-print(proc::ExpectProc, x::String) = write(proc, x)
-println(proc::ExpectProc, x::String) = write(proc, string(x, "\n"))
+print(proc::ExpectProc, x::AbstractString) = write(proc, x)
+println(proc::ExpectProc, x::AbstractString) = write(proc, string(x, "\n"))
 
 # Reading functions
 function wait_timeout(func::Function, proc::ExpectProc; timeout::Real=proc.timeout)
@@ -182,17 +183,17 @@ readavailable(proc::ExpectProc) = readavailable(proc.in_stream)
 
 
 # Expect
-function _expect_search(buf::String, str::String)
+function _expect_search(buf::AbstractString, str::AbstractString)
     pos = search(buf, str)
     return pos == 0:-1? nothing: (buf[pos], pos)
 end
 
-function _expect_search(buf::String, regex::Regex)
+function _expect_search(buf::AbstractString, regex::Regex)
     m = match(regex, buf)
     return m == nothing? nothing: (m.match, m.offset:(m.offset+length(m.match)-1))
 end
 
-function _expect_search(buf::String, vec::Vector)
+function _expect_search(buf::AbstractString, vec::Vector)
     for idx=1:length(vec)
         ret = _expect_search(buf, vec[idx])
         if ret != nothing
@@ -234,7 +235,7 @@ function expect!(proc::ExpectProc, regex::Regex; timeout::Real=proc.timeout)
     proc.before
 end
 
-function expect!(proc::ExpectProc, str::String; timeout::Real=proc.timeout)
+function expect!(proc::ExpectProc, str::AbstractString; timeout::Real=proc.timeout)
     # TODO: this is worth implementing more efficiently
     expect!(proc, [str]; timeout=timeout)
     proc.before
