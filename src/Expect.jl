@@ -151,14 +151,12 @@ print(proc::ExpectProc, x::AbstractString) = write(proc, x)
 println(proc::ExpectProc, x::AbstractString) = write(proc, string(x, "\n"))
 
 # Reading functions
-function wait_timeout(func::Function, proc::ExpectProc; timeout::Real=proc.timeout)
+function _timed_wait(func::Function, proc::ExpectProc; timeout::Real=proc.timeout)
     if isinf(timeout)
         return func()
     end
     thunk = current_task()
-    timer = Timer(timeout)
-    @schedule try
-        wait(timer)
+    timer = Timer(timeout) do _
         Base.throwto(thunk, ExpectTimeout())
     end
     local ret
@@ -170,45 +168,36 @@ function wait_timeout(func::Function, proc::ExpectProc; timeout::Real=proc.timeo
     return ret
 end
 
-function with_timeout!(func::Function, proc::ExpectProc, timeout::Real)
-    orig = proc.timeout
-    proc.timeout = timeout
-    local ret
-    try
-        ret = func()
-    finally
-        proc.timeout = orig
-    end
-    return ret
-end
-
-eof(proc::ExpectProc; timeout::Real=proc.timeout) =
-    wait_timeout(proc; timeout=timeout) do
+function eof(proc::ExpectProc; timeout::Real=proc.timeout)
+    _timed_wait(proc; timeout=timeout) do
         eof(proc.in_stream)
     end
+end
 
-wait_readnb(proc::ExpectProc, nb::Int; timeout::Real=proc.timeout) =
-    wait_timeout(proc; timeout=timeout) do
+function wait_readnb(proc::ExpectProc, nb::Int; timeout::Real=proc.timeout)
+    _timed_wait(proc; timeout=timeout) do
         wait_readnb(proc.in_stream, nb)
     end
+end
 
-wait_readbyte(proc::ExpectProc, c::UInt8; timeout::Real=proc.timeout) =
-    wait_timeout(proc; timeout=timeout) do
+function wait_readbyte(proc::ExpectProc, c::UInt8; timeout::Real=proc.timeout)
+    _timed_wait(proc; timeout=timeout) do
         wait_readbyte(proc.in_stream, c)
     end
+end
 
 read(proc::ExpectProc, ::Type{UInt8}; timeout::Real=proc.timeout) =
-    wait_timeout(proc; timeout=timeout) do
+    _timed_wait(proc; timeout=timeout) do
         read(proc.in_stream, UInt8)
     end
 
 readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b); timeout::Real=proc.timeout) =
-    wait_timeout(proc; timeout=timeout) do
+    _timed_wait(proc; timeout=timeout) do
         readbytes!(proc.in_stream, b, nb)
     end
 
 readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout) =
-    wait_timeout(proc; timeout=timeout) do
+    _timed_wait(proc; timeout=timeout) do
         readuntil(proc.in_stream, delim)
     end
 
@@ -275,6 +264,20 @@ function expect!(proc::ExpectProc, str::AbstractString; timeout::Real=proc.timeo
     # TODO: this is worth implementing efficiently
     expect!(proc, [str]; timeout=timeout)
     proc.before
+end
+
+
+# Helpers
+function with_timeout!(func::Function, proc::ExpectProc, timeout::Real)
+    orig = proc.timeout
+    proc.timeout = timeout
+    local ret
+    try
+        ret = func()
+    finally
+        proc.timeout = orig
+    end
+    return ret
 end
 
 
