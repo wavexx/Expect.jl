@@ -1,11 +1,13 @@
 include("prelude.jl")
 
-@testset "pty" begin
-    interact(`cat`, 1) do proc
-        sendeof(proc)
-        @test readstring(proc) == "\n"
-        wait(proc)
-        @test success(proc)
+@static if is_unix()
+    @testset "pty" begin
+        interact(`cat`, 1) do proc
+            sendeof(proc)
+            @test readstring(proc) == "\n"
+            wait(proc)
+            @test success(proc)
+        end
     end
 end
 
