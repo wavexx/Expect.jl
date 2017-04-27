@@ -157,9 +157,10 @@ close(proc::ExpectProc) = close(proc.out_stream)
 
 function sendeof(proc::ExpectProc)
     if typeof(proc.out_stream) <: TTY
-        _sendeof(proc.out_stream)
+        return _sendeof(proc.out_stream) == 0
     else
         close(proc.out_stream)
+        return true
     end
 end
 
