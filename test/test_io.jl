@@ -3,29 +3,29 @@ include("prelude.jl")
 @testset "println" begin
     interact(`cat`, 1) do proc
         println(proc, "hello world")
-        @test expect!(proc, "\n") == "hello world"
-        @test process_running(proc)
+        @require expect!(proc, "\n") == "hello world"
+        @require process_running(proc)
     end
 end
 
 @testset "readstring" begin
     interact(`printf 'hello\nworld\n'`, 1) do proc
-        @test readstring(proc) == "hello\nworld\n"
-        @test eof(proc)
+        @require readstring(proc) == "hello\nworld\n"
+        @require eof(proc)
     end
 end
 
 @testset "readuntil" begin
     interact(`printf 'hello\nworld\n'`, 1) do proc
-        @test readuntil(proc, "\n") == "hello\n"
-        @test readuntil(proc, '\n') == "world\n"
-        @test eof(proc)
+        @require readuntil(proc, "\n") == "hello\n"
+        @require readuntil(proc, '\n') == "world\n"
+        @require eof(proc)
     end
 end
 
 @testset "readline" begin
     interact(`printf 'hello\nworld\n'`, 1) do proc
-        @test readline(proc) == "hello"
-        @test !eof(proc)
+        @require readline(proc) == "hello"
+        @require !eof(proc)
     end
 end
