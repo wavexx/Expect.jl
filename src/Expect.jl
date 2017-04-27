@@ -11,7 +11,7 @@ end
 ## Imports
 import Base.Libc: strerror
 import Base: Process, TTY, wait, wait_readnb, wait_readbyte
-import Base: kill, process_running, process_exited
+import Base: kill, process_running, process_exited, success
 import Base: write, print, println, flush, eof, close
 import Base: read, readbytes!, readuntil
 import Base: isopen, nb_available, readavailable
@@ -139,6 +139,7 @@ kill(proc::ExpectProc, signum::Integer=15) = kill(proc.proc, signum)
 wait(proc::ExpectProc) = wait(proc.proc)
 process_running(proc::ExpectProc) = process_running(proc.proc)
 process_exited(proc::ExpectProc) = process_exited(proc.proc)
+success(proc::ExpectProc) = success(proc.proc)
 
 # Writing functions
 flush(proc::ExpectProc) = flush(proc.out_stream)
