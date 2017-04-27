@@ -4,6 +4,7 @@ export ExpectProc, interact, expect!, with_timeout!, sendeof
 export ExpectTimeout, ExpectEOF
 
 ## Imports
+using Compat: @__DIR__
 import Base.Libc: strerror
 import Base: Process, TTY, wait, wait_readnb, wait_readbyte
 import Base: kill, process_running, process_exited, success
