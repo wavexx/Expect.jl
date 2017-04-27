@@ -1,6 +1,6 @@
 ## Exports
 module Expect
-export ExpectProc, expect!, with_timeout!
+export ExpectProc, interact, expect!, with_timeout!
 export ExpectTimeout, ExpectEOF
 
 @static if is_unix()
@@ -110,26 +110,25 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
         local proc::Process
         try
             proc = spawn(cmd, (fds, fds, fds))
-            Base.start_reading(in_stream)
-            @schedule begin
-                wait(proc)
-                ccall(:close, Cint, (Cint,), fds)
-                kill(proc)
-            end
         catch ex
             ccall(:close, Cint, (Cint,), fds)
             close(ttym)
             rethrow(ex)
         end
-    else
-        in_stream, out_stream, proc = readandwrite(cmd)
-        Base.start_reading(Base.pipe_reader(in_stream))
+
         @schedule begin
             wait(proc)
-            kill(proc)
+            close(ttym)
+            ccall(:close, Cint, (Cint,), fds)
         end
+    else
+        pipe = Pipe()
+        in_stream, proc = open(cmd, "r", pipe)
+        out_stream = Base.pipe_writer(pipe)
+        in_stream = Base.pipe_reader(in_stream)
     end
 
+    Base.start_reading(in_stream)
     return (in_stream, out_stream, proc)
 end
 
@@ -278,6 +277,19 @@ function with_timeout!(func::Function, proc::ExpectProc, timeout::Real)
         proc.timeout = orig
     end
     return ret
+end
+
+function interact(func::Function, cmd::Cmd, args...; kwargs...)
+    proc = ExpectProc(cmd, args...; kwargs...)
+    try
+        func(proc)
+    catch err
+        kill(proc)
+        rethrow(err)
+    end
+    close(proc)
+    # wait+kill performed by success itself
+    success(proc)
 end
 
 
