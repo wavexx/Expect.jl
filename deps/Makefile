@@ -1,7 +1,4 @@
-all: constants.jl
+all: libexjl.so
 
-constants.jl: constants
-	./constants > $@
-
-constants: constants.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
+libexjl.so: libexjl.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -shared -fPIC -o $@ $<

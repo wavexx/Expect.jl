@@ -1,12 +1,7 @@
 ## Exports
 module Expect
-export ExpectProc, interact, expect!, with_timeout!
+export ExpectProc, interact, expect!, with_timeout!, sendeof
 export ExpectTimeout, ExpectEOF
-
-@static if is_unix()
-    # ioctl values
-    include("../deps/constants.jl")
-end
 
 ## Imports
 import Base.Libc: strerror
@@ -15,6 +10,21 @@ import Base: kill, process_running, process_exited, success
 import Base: write, print, println, flush, eof, close
 import Base: read, readbytes!, readuntil
 import Base: isopen, nb_available, readavailable
+
+## UNIX/tty support lib
+@static if is_unix()
+    const LIBEXJL = joinpath(@__DIR__, "../deps/libexjl.so")
+
+    function _set_cloexec(fd::RawFD)
+        ccall((:exjl_set_cloexec, LIBEXJL), Cint, (Cint,), fd)
+    end
+
+    function _sendeof(tty::TTY)
+        flush(tty) # flush any pending buffer in jl/uv
+        ccall((:exjl_sendeof, LIBEXJL), Cint, (Ptr{Void},), tty)
+    end
+end
+
 
 ## Types
 type ExpectTimeout <: Exception end
@@ -88,7 +98,7 @@ function _spawn(cmd::Cmd, env::Base.EnvHash, pty::Bool)
         ttym = TTY(fdm; readable=true)
         in_stream = out_stream = ttym
 
-        rc = ccall(:ioctl, Cint, (Cint,Cint), fdm, FIOCLEX)
+        rc = _set_cloexec(fdm)
         rc != 0 && error("ioctl failed: $(strerror())")
 
         rc = ccall(:grantpt, Cint, (Cint,), fdm)
@@ -143,6 +153,15 @@ success(proc::ExpectProc) = success(proc.proc)
 # Writing functions
 flush(proc::ExpectProc) = flush(proc.out_stream)
 close(proc::ExpectProc) = close(proc.out_stream)
+
+function sendeof(proc::ExpectProc)
+    if typeof(proc.out_stream) <: TTY
+        _sendeof(proc.out_stream)
+    else
+        close(proc.out_stream)
+    end
+end
+
 write(proc::ExpectProc, buf::Vector{UInt8}) = write(proc.out_stream, buf)
 write(proc::ExpectProc, buf::AbstractString) = write(proc, proc.encode(buf))
 write(proc::ExpectProc, buf::String) = write(proc, proc.encode(buf))
