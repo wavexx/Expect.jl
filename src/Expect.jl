@@ -306,8 +306,10 @@ function interact(func::Function, cmd::Cmd, args...; kwargs...)
     catch err
         kill(proc)
         rethrow(err)
+    finally
+        close(proc)
     end
-    close(proc)
+
     # wait+kill performed by success itself
     success(proc)
 end
