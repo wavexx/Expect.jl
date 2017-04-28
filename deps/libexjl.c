@@ -5,7 +5,8 @@
 #include <stdint.h>
 #include <string.h>
 
-extern int jl_uv_handle(void*);
+// do not require libuv development headers
+extern int uv_fileno(void*, int* fd);
 
 
 int exjl_set_cloexec(int fd)
@@ -20,9 +21,11 @@ int exjl_sendeof(void* tty)
   int fd, ret;
   uint8_t seq[2];
 
+  if(uv_fileno(tty, &fd))
+    return -1;
+
   // fetch current discipline
-  fd = jl_uv_handle(tty);
-  tcgetattr(fd, &buf);
+  ret = tcgetattr(fd, &buf);
   if(ret != 0) return -1;
 
   if(!(buf.c_lflag & ICANON) || (buf.c_lflag & (ECHO | ECHONL)))
@@ -30,7 +33,7 @@ int exjl_sendeof(void* tty)
     // force ICANON processing without ECHO
     buf.c_lflag |= ICANON;
     buf.c_lflag &= ~(ECHO | ECHONL);
-    tcsetattr(fd, TCSADRAIN, &buf);
+    ret = tcsetattr(fd, TCSADRAIN, &buf);
     if(ret != 0) return -1;
   }
 
