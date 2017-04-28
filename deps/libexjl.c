@@ -43,5 +43,6 @@ int exjl_sendeof(void* tty)
   ret = write(fd, seq, 2);
   if(ret != 2) return -1;
 
+  tcdrain(fd);
   return 0;
 }
