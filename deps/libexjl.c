@@ -25,13 +25,16 @@ int exjl_sendeof(void* tty)
   tcgetattr(fd, &buf);
   if(ret != 0) return -1;
 
-  // enable ICANON processing without ECHO
-  buf.c_lflag |= ICANON;
-  buf.c_lflag &= ~(ECHO | ECHONL);
-  tcsetattr(fd, TCSADRAIN, &buf);
-  if(ret != 0) return -1;
+  if(!(buf.c_lflag & ICANON) || (buf.c_lflag & (ECHO | ECHONL)))
+  {
+    // force ICANON processing without ECHO
+    buf.c_lflag |= ICANON;
+    buf.c_lflag &= ~(ECHO | ECHONL);
+    tcsetattr(fd, TCSADRAIN, &buf);
+    if(ret != 0) return -1;
+  }
 
-  // send EOF
+  // send NL+EOF
   seq[0] = '\n';
   seq[1] = buf.c_cc[VEOF];
   ret = write(fd, seq, 2);
