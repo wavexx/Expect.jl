@@ -1,6 +1,6 @@
 ## Exports
 module Expect
-export ExpectProc, interact, expect!, with_timeout!, sendeof
+export ExpectProc, interact, expect!, with_timeout!, raw!, sendeof
 export ExpectTimeout, ExpectEOF
 
 ## Imports
@@ -69,8 +69,9 @@ function raw!(tty::TTY, raw::Bool)
 end
 
 function raw!(proc::ExpectProc, raw::Bool)
-    @static if !is_unix()
-        return true
+    if !isa(proc.out_stream, TTY)
+        # pipes are always raw
+        return raw
     else
         @static if VERSION < v"0.7"
             # libuv keeps an internal "mode" state which prevents us to call

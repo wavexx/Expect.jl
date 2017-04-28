@@ -34,6 +34,13 @@ end
     # Test with pty=false
     interact(`cat`, 1; pty=false) do proc
         @test typeof(proc.out_stream) <: Base.PipeEndpoint
+
+        # raw should always succeed on pipes/windows
+        @test raw!(proc, true)
+
+        # switching off raw without a pty should fail
+        @test !raw!(proc, false)
+
         @test process_running(proc)
     end
 end
