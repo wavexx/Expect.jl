@@ -44,8 +44,8 @@ mutable struct ExpectProc <: IO
     function ExpectProc(cmd::Cmd, timeout::Real; env::Base.EnvDict=ENV, encoding="utf8", pty=true)
         # TODO: only utf8 is currently supported
         @assert encoding == "utf8"
-        encode = x->transcode(UInt8, x)
-        decode = x->transcode(String, x)
+        encode = x->collect(transcode(UInt8, x))
+        decode = x->transcode(String, copy(x))
 
         in_stream, out_stream, proc = _spawn(cmd, env, pty)
         new(proc, timeout, encode, decode,
