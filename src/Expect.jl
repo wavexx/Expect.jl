@@ -166,9 +166,13 @@ end
 
 write(proc::ExpectProc, buf::Vector{UInt8}) = write(proc.out_stream, buf)
 write(proc::ExpectProc, buf::AbstractString) = write(proc, proc.encode(buf))
-write(proc::ExpectProc, buf::String) = write(proc, proc.encode(buf))
 print(proc::ExpectProc, x::AbstractString) = write(proc, x)
 println(proc::ExpectProc, x::AbstractString) = write(proc, string(x, "\n"))
+# resolve method ambiguity
+const ContiguousString = Union{String,SubString{String}}
+write(proc::ExpectProc, buf::ContiguousString) = write(proc, proc.encode(buf))
+print(proc::ExpectProc, x::ContiguousString) = write(proc, x)
+println(proc::ExpectProc, x::ContiguousString) = write(proc, string(x, "\n"))
 
 # Reading functions
 function _timed_wait(func::Function, proc::ExpectProc; timeout::Real=proc.timeout)
