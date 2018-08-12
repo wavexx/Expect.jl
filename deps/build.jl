@@ -1,1 +1,1 @@
-is_unix() && run(`make`)
+Sys.isunix() && run(`make`)
