@@ -9,7 +9,7 @@ import Base: Process, TTY, wait, wait_readnb, wait_readbyte
 import Base: kill, process_running, process_exited, success
 import Base: write, print, println, flush, eof, close
 import Base: read, readbytes!, readuntil
-import Base: isopen, nb_available, readavailable
+import Base: isopen, bytesavailable, readavailable
 
 ## UNIX/tty support lib
 @static if Sys.isunix()
@@ -30,7 +30,7 @@ end
 struct ExpectTimeout <: Exception end
 struct ExpectEOF <: Exception end
 
-struct ExpectProc <: IO
+mutable struct ExpectProc <: IO
     proc::Process
     timeout::Real
     encode::Function
@@ -120,7 +120,7 @@ function _spawn(cmd::Cmd, env::Base.EnvDict, pty::Bool)
 
         local proc::Process
         try
-            proc = spawn(cmd, (fds, fds, fds))
+            proc = run(cmd, (fds, fds, fds), wait=false)
         catch ex
             ccall(:close, Cint, (Cint,), fds)
             close(ttym)
@@ -222,14 +222,14 @@ readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout) =
     end
 
 isopen(proc::ExpectProc) = isopen(proc.in_stream)
-nb_available(proc::ExpectProc) = nb_available(proc.in_stream)
+bytesavailable(proc::ExpectProc) = bytesavailable(proc.in_stream)
 readavailable(proc::ExpectProc) = readavailable(proc.in_stream)
 
 
 # Expect
 function _expect_search(buf::AbstractString, str::AbstractString)
-    pos = search(buf, str)
-    return pos == 0:-1 ? nothing : (buf[pos], pos)
+    pos = findfirst(str, buf)
+    return pos == nothing ? nothing : (buf[pos], pos)
 end
 
 function _expect_search(buf::AbstractString, regex::Regex)
@@ -252,7 +252,7 @@ function expect!(proc::ExpectProc, vec; timeout::Real=proc.timeout)
     pos = 0:-1
     idx = 0
     while true
-        if nb_available(proc.in_stream) > 0
+        if bytesavailable(proc.in_stream) > 0
             proc.buffer = vcat(proc.buffer, readavailable(proc.in_stream))
         end
         if length(proc.buffer) > 0
