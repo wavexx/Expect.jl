@@ -10,15 +10,15 @@ end
 
 @testset "readstring" begin
     interact(`printf 'hello\nworld\n'`, 1) do proc
-        @require readstring(proc) == "hello\nworld\n"
+        @require read(proc, String) == "hello\nworld\n"
         @require eof(proc)
     end
 end
 
 @testset "readuntil" begin
     interact(`printf 'hello\nworld\n'`, 1) do proc
-        @require readuntil(proc, "\n") == "hello\n"
-        @require readuntil(proc, '\n') == "world\n"
+        @require readuntil(proc, "\n", keep=true) == "hello\n"
+        @require readuntil(proc, '\n', keep=true) == "world\n"
         @require eof(proc)
     end
 end
