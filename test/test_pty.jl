@@ -2,7 +2,7 @@ include("prelude.jl")
 
 @testset "default_pty" begin
     interact(`cat`, 1) do proc
-        @static if is_unix()
+        @static if Sys.isunix()
             @test typeof(proc.out_stream) <: Expect.TTY
         else
             @test typeof(proc.out_stream) <: Base.PipeEndpoint
@@ -15,7 +15,7 @@ end
         # Ensure the transport is already 8bit safe
         buf = [UInt8(i) for i in 0:255]
         write(proc, buf)
-        ret = Vector{UInt8}(length(buf))
+        ret = Vector{UInt8}(undef, length(buf))
         readbytes!(proc, ret)
         @test buf == ret
     end
