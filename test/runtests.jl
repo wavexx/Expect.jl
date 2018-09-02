@@ -1,7 +1,8 @@
-using Base.Test
+using Test
+using Printf
 
-tests = Base.Test.DefaultTestSet("all")
-Base.Test.push_testset(tests)
+tests = Test.DefaultTestSet("all")
+Test.push_testset(tests)
 
 dir = dirname(@__FILE__)
 for f in readdir(dir)
@@ -14,21 +15,21 @@ for f in readdir(dir)
     name = m.captures[1]
     @printf("%-12s ... ", name)
 
-    ts = Base.Test.DefaultTestSet(name)
-    Base.Test.push_testset(ts)
+    ts = Test.DefaultTestSet(name)
+    Test.push_testset(ts)
     try
         evalfile(fp)
     catch err
-        res = Base.Test.Error(:nontest_error, :(), err, catch_backtrace())
-        Base.Test.record(ts, res)
+        res = Test.Error(:nontest_error, :(), err, catch_backtrace())
+        Test.record(ts, res)
     end
-    Base.Test.pop_testset()
-    Base.Test.finish(ts)
+    Test.pop_testset()
+    Test.finish(ts)
 
     # lazy: use get_test_counts to set ts.anynonpass
-    Base.Test.get_test_counts(ts)
+    Test.get_test_counts(ts)
     ts.anynonpass || println("OK")
 end
 
-Base.Test.pop_testset()
-Base.Test.finish(tests)
+Test.pop_testset()
+Test.finish(tests)
