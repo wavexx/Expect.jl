@@ -221,9 +221,9 @@ readbytes!(proc::ExpectProc, b::AbstractVector{UInt8}, nb=length(b); timeout::Re
         readbytes!(proc.in_stream, b, nb)
     end
 
-readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout) =
+readuntil(proc::ExpectProc, delim::AbstractString; timeout::Real=proc.timeout, keep::Bool=false) =
     _timed_wait(proc; timeout=timeout) do
-        readuntil(proc.in_stream, delim)
+        readuntil(proc.in_stream, delim, keep=keep)
     end
 
 isopen(proc::ExpectProc) = isopen(proc.in_stream)
