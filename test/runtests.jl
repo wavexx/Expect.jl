@@ -1,4 +1,5 @@
-using Test, Printf
+using Test
+using Printf
 
 tests = Test.DefaultTestSet("all")
 Test.push_testset(tests)

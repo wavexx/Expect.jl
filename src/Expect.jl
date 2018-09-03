@@ -132,14 +132,15 @@ function _spawn(cmd::Cmd, env::Base.EnvDict, pty::Bool)
             close(ttym)
             ccall(:close, Cint, (Cint,), fds)
         end
+
+        Base.start_reading(in_stream)
     else
         pipe = Pipe()
-        in_stream, proc = open(cmd, "r", pipe)
+        proc = open(cmd, "r", pipe)
         out_stream = Base.pipe_writer(pipe)
-        in_stream = Base.pipe_reader(in_stream)
+        in_stream = Base.pipe_reader(proc)
     end
 
-    Base.start_reading(in_stream)
     return (in_stream, out_stream, proc)
 end
 
